@@ -786,6 +786,7 @@ function drawHUD() {
   // on-screen versions of the L and Tab keys, for phones and tablets
   button(122, 255, 40, 13, 'LEAD', toggleLeadAid, { on: game.leadAid });
   button(166, 255, 36, 13, 'CARD', () => { game.showCard = !game.showCard; }, { on: game.showCard });
+  if (canFullscreen) button(206, 255, 26, 13, isFullscreen() ? '><' : '<>', toggleFullscreen);
   text(`STATION ${game.station + 1}`, W / 2 + 90, 259, '#f3d9a8', 1, 'center', '#3e2614');
   text(CHOKES[game.choke].short + ' CHOKE', W - 46, 259, '#f3d9a8', 1, 'right', '#3e2614');
   const total = game.state === 'ready' || game.state === 'flight' ? presDefs(game.station)[game.pres].traps.length : 0;
@@ -796,7 +797,7 @@ function drawHUD() {
   }
   if (game.state === 'reload') text('RELOADING...', W / 2, 120, '#c8d4ea', 1, 'center');
   if (game.state === 'walk') text(`MOVING TO STATION ${game.station + 2}...`, W / 2, 120, C_WHT, 1, 'center');
-  text('TAB: CARD  M: SOUND  L: LEAD MARKER  ESC: QUIT', 4, H - 24, '#c9d4ea', 1, 'left');
+  text('TAB: CARD  M: SOUND  L: LEAD  F: FULL SCREEN  ESC: QUIT', 4, H - 24, '#c9d4ea', 1, 'left');
   if (game.leadAid) text('LEAD MARKER ON - NOT RANKED', W - 4, H - 24, '#5ff2ff', 1, 'right');
 }
 function drawMsgs() {
@@ -1022,7 +1023,10 @@ function drawTitle() {
   text('THE TRAPS', 352, 140, C_YEL, 1, 'center');
   Object.keys(TRAPS).forEach((k, i) => text(`${k}  ${TRAPS[k].name}`, 262, 150 + i * 9, '#c8d4ea'));
   button(W / 2 - 75, 225, 150, 14, 'LEAD MARKER: ' + (game.leadAid ? 'ON' : 'OFF'), () => { game.leadAid = !game.leadAid; }, { on: game.leadAid });
-  button(W / 2 - 40, 243, 80, 13, 'SOUND: ' + (muted ? 'OFF' : 'ON'), () => { muted = !muted; });
+  if (canFullscreen) {
+    button(W / 2 - 84, 243, 80, 13, 'SOUND: ' + (muted ? 'OFF' : 'ON'), () => { muted = !muted; });
+    button(W / 2 + 4, 243, 80, 13, isFullscreen() ? 'EXIT FULL' : 'FULL SCREEN', toggleFullscreen);
+  } else button(W / 2 - 40, 243, 80, 13, 'SOUND: ' + (muted ? 'OFF' : 'ON'), () => { muted = !muted; });
   text('LEAD MARKER SHOWS WHERE TO AIM - PRACTICE ONLY', W / 2, 260, '#8a94ad', 1, 'center');
 }
 function drawSummary() {
@@ -1072,8 +1076,8 @@ function render() {
   else if (game.state === 'splash') drawSplash();
   else if (game.state === 'summary') { drawSummary(); drawCursor(); }
   // phones held upright: the field is too small to shoot, so ask for landscape.
-  // "no input can hover" means touch only, so touchscreen laptops (which have a touchpad) are left alone.
-  if (innerHeight > innerWidth && matchMedia('(any-hover: none)').matches) {
+  // Judged by the physical screen size, so touchscreen laptops and tall desktop windows are left alone.
+  if (innerHeight > innerWidth && navigator.maxTouchPoints > 0 && Math.min(screen.width, screen.height) < 600) {
     R(0, 0, W, H, '#0b0e1a');
     text('TURN YOUR PHONE SIDEWAYS', W / 2, H / 2 - 10, C_YEL, 3, 'center');
     text('GERRY\'S 5-STAND PLAYS IN LANDSCAPE', W / 2, H / 2 + 16, C_GRY, 1, 'center');
@@ -1093,7 +1097,7 @@ addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('pointerdown', e => {
   e.preventDefault(); audio(); setMouse(e);
   if (e.button !== 0) return;
-  if (game.state === 'splash') { toTitle(); return; }
+  if (game.state === 'splash') { leaveSplash(); return; }
   for (const b of ui) {
     if (mouse.x >= b.x && mouse.x < b.x + b.w && mouse.y >= b.y && mouse.y < b.y + b.h) {
       if (!b.disabled) { SFX.ui(); b.fn(); }
@@ -1107,7 +1111,7 @@ addEventListener('pointerdown', e => {
 addEventListener('keydown', e => {
   audio();
   const k = e.key;
-  if (game.state === 'splash') { e.preventDefault(); toTitle(); return; }
+  if (game.state === 'splash') { e.preventDefault(); leaveSplash(); return; }
   if (k === ' ' || e.code === 'Space') { e.preventDefault(); if (!e.repeat && game.state === 'ready') pull(); return; }
   if (k === 'Tab') { e.preventDefault(); if (game.state !== 'title' && game.state !== 'summary') game.showCard = true; return; }
   if (game.state === 'summary' && game.lbEntry) {
@@ -1118,9 +1122,30 @@ addEventListener('keydown', e => {
   }
   if (k === 'Enter') { if (game.state === 'title' || game.state === 'summary') newRound(); return; }
   if (k === 'm' || k === 'M') { muted = !muted; return; }
+  if (k === 'f' || k === 'F') { toggleFullscreen(); return; }
   if (k === 'l' || k === 'L') { toggleLeadAid(); return; }
   if (k === 'Escape' && game.state !== 'title') { toTitle(); return; }
 });
+// hide the browser's tabs and toolbars. iPhones don't allow this from a web page; there the
+// installed home-screen app opens full screen instead, so the button only shows where it works.
+const canFullscreen = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+const isFullscreen = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+function toggleFullscreen() {
+  const el = document.documentElement;
+  try {
+    if (isFullscreen()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    else {
+      const p = (el.requestFullscreen || el.webkitRequestFullscreen).call(el, { navigationUI: 'hide' });
+      if (p && screen.orientation && screen.orientation.lock) p.then(() => screen.orientation.lock('landscape')).catch(() => {});
+    }
+  } catch (e) {}
+}
+// Browsers only allow full screen in response to a click or key press, so the click that
+// leaves the dedication screen also takes the game full screen (Esc or F leaves it again).
+function leaveSplash() {
+  if (canFullscreen && !isFullscreen()) toggleFullscreen();
+  toTitle();
+}
 function toggleLeadAid() {
   game.leadAid = !game.leadAid;
   if (game.leadAid && game.state !== 'title') game.assisted = true;
@@ -1135,9 +1160,9 @@ function promptInitials() {
 addEventListener('keyup', e => { if (e.key === 'Tab') game.showCard = false; });
 addEventListener('blur', () => { game.showCard = false; });
 
+// scale to fill as much of the window as the 16:9 picture allows
 function fit() {
-  let s = Math.min(innerWidth / W, innerHeight / H);
-  if (s >= 2) s = Math.floor(s);
+  const s = Math.min(innerWidth / W, innerHeight / H);
   cv.style.width = Math.floor(W * s) + 'px';
   cv.style.height = Math.floor(H * s) + 'px';
 }
