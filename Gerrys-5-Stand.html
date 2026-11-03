@@ -1071,8 +1071,9 @@ function render() {
   } else if (game.state === 'title') { drawTitle(); drawCursor(); }
   else if (game.state === 'splash') drawSplash();
   else if (game.state === 'summary') { drawSummary(); drawCursor(); }
-  // phones held upright: the field is too small to shoot, so ask for landscape
-  if (innerHeight > innerWidth && matchMedia('(pointer: coarse)').matches) {
+  // phones held upright: the field is too small to shoot, so ask for landscape.
+  // "no input can hover" means touch only, so touchscreen laptops (which have a touchpad) are left alone.
+  if (innerHeight > innerWidth && matchMedia('(any-hover: none)').matches) {
     R(0, 0, W, H, '#0b0e1a');
     text('TURN YOUR PHONE SIDEWAYS', W / 2, H / 2 - 10, C_YEL, 3, 'center');
     text('GERRY\'S 5-STAND PLAYS IN LANDSCAPE', W / 2, H / 2 + 16, C_GRY, 1, 'center');
