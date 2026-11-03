@@ -1,8 +1,8 @@
 {
-  "name": "Gerry's 5-Stand",
-  "short_name": "Gerry's 5-Stand",
+  "name": "Jerry's 5-Stand",
+  "short_name": "Jerry's 5-Stand",
   "description": "An 8-bit 5-stand sporting clays game. For my grandfather.",
-  "start_url": "./Gerrys-5-Stand.html",
+  "start_url": "./Jerrys-5-Stand.html",
   "scope": "./",
   "display": "fullscreen",
   "orientation": "landscape",

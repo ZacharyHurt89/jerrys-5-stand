@@ -1,11 +1,11 @@
 // Offline support for the installed app. Serves from the cache right away, then refreshes
 // the cache from the network in the background, so a new version shows up on the next launch.
 // Bump VERSION when files are added or renamed.
-const VERSION = 'gerrys-5-stand-v1';
+const VERSION = 'jerrys-5-stand-v2';
 const FILES = [
   './',
   './index.html',
-  './Gerrys-5-Stand.html',
+  './Jerrys-5-Stand.html',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
