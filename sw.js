@@ -1,7 +1,7 @@
-// Offline support for the installed app. Serves from the cache right away, then refreshes
-// the cache from the network in the background, so a new version shows up on the next launch.
-// Bump VERSION when files are added or renamed.
-const VERSION = 'jerrys-5-stand-v2';
+// Offline support for the installed app. The game page comes from the network when online
+// (saved copy when offline); icons and the manifest come from the cache and refresh in the
+// background. Bump VERSION when files are added or renamed.
+const VERSION = 'jerrys-5-stand-v3';
 const FILES = [
   './',
   './index.html',
@@ -27,6 +27,18 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  // The game page itself: try the network first so a new upload shows up right away,
+  // and fall back to the saved copy when offline.
+  if (e.request.mode === 'navigate' || e.request.url.endsWith('.html')) {
+    e.respondWith(
+      caches.open(VERSION).then(cache =>
+        fetch(e.request)
+          .then(res => { if (res.ok) cache.put(e.request, res.clone()); return res; })
+          .catch(() => cache.match(e.request, { ignoreSearch: true }))
+      )
+    );
+    return;
+  }
   e.respondWith(
     caches.open(VERSION).then(async cache => {
       const cached = await cache.match(e.request, { ignoreSearch: true });
