@@ -453,6 +453,13 @@ const RADIO_ARR = {
 // abcnotation.com: Paul Hardy's Session Tunebook (pghardy.net, CC BY-NC-SA), the Digital Tradition
 // collection, and Frank Nordberg's musicaviva transcriptions. Chords are worked out in-game.
 const RADIO = [
+  // the game's own tunes
+  { title: 'HOME RANGE', tune: 'title', arr: 'classic' },
+  { title: 'MT. SHASTA', tune: 'shasta', arr: 'shasta' },
+  { title: 'HIGH DESERT', tune: 'desert', arr: 'desert' },
+  { title: 'THE PLAINS', tune: 'plains', arr: 'plains' },
+  { title: "JERRY'S THEME", tune: 'jerry', arr: 'jerry' },
+  // the old public-domain songs
   { title: 'SHENANDOAH', arr: 'folk', bpm: 70, abc: `M:4/4
 L:1/8
 K:G
@@ -551,7 +558,11 @@ e3d dcAc|GEC2 z B,CD|EAGE DCA,B,|C6|]` },
 ];
 const RADIO_CACHE = {};
 function radioSong(i) {
-  if (!RADIO_CACHE[i]) { const r = RADIO[i]; RADIO_CACHE[i] = compileTune(parseABC(r.abc), Object.assign({ bpm: r.bpm, once: true }, RADIO_ARR[r.arr])); }
+  if (!RADIO_CACHE[i]) {
+    const r = RADIO[i];
+    RADIO_CACHE[i] = r.tune ? compileTune(TUNES[r.tune], Object.assign({}, ARRANGE[r.arr], { once: true }))
+      : compileTune(parseABC(r.abc), Object.assign({ bpm: r.bpm, once: true }, RADIO_ARR[r.arr]));
+  }
   return RADIO_CACHE[i];
 }
 // instruments
@@ -1667,7 +1678,7 @@ function drawHUD() {
   }
   // back to the title screen; first click arms it so a stray click mid-round doesn't end the round
   const sure = time < game.quitArmedUntil;
-  button(70, 255, 46, 13, sure ? 'SURE?' : 'TITLE', () => {
+  button(70, 255, 46, 13, sure ? 'SURE?' : 'HOME', () => {
     if (time < game.quitArmedUntil) toTitle(); else game.quitArmedUntil = time + 2.5;
   }, { on: sure });
   // on-screen versions of the L and Tab keys, for phones and tablets
@@ -2429,10 +2440,10 @@ const HELP_TOPICS = [
     "Mt. Shasta has been my home for many years, I hope you enjoy our beautiful scenery as much as I do!",
   ] },
   { name: 'BUTTONS AND KEYS', lines: [
-    "Pull or the spacebar calls the bird, and a click shoots. Card or Tab shows your scorecard. Title takes you back to the start, click it twice to be sure.",
+    "Pull or the spacebar calls the bird, and a click shoots. Card or Tab shows your scorecard. Home takes you back to the start, click it twice to be sure.",
     "L turns the lead marker on and off, M turns the sound off, F goes full screen, and H brings you back over here to me. Escape twice quits the round.",
     "Each scenery has its own tune. Music in Settings picks Menus, which goes quiet while you shoot so you hear the trap, Always, which keeps it playing soft, Jerry Radio, or Off.",
-    "Or tune in to Jerry Radio. That's the old songs I grew up on, Red River Valley, Shenandoah, Oh Susanna and the rest, one after another.",
+    "Or tune in to Jerry Radio. That's my own tunes and the old songs I grew up on, Red River Valley, Shenandoah, Oh Susanna and the rest, one after another.",
     "On the radio, the arrows button or S skips ahead, and when you find one you like, Loop or the R key keeps it playing.",
     "During a round, the Music button on the rail or the N key flips from my tunes, to Jerry Radio, to off, and back around.",
   ] },
@@ -2685,7 +2696,7 @@ function drawSummary() {
   else if (game.choke !== 'full') text('PRACTICE CHOKE - SCORE NOT RANKED (USE FULL TO COMPETE)', cx, ly, '#ffb070', 1, 'center');
   else text(f.s === 0 ? 'NO BIRDS, NO BOARD - GO AGAIN!' : 'NOT IN THE TOP 10 THIS TIME', cx, ly, '#8a94ad', 1, 'center');
   button(cx - 150, ly + 10, 196, 17, 'SHOOT ANOTHER ROUND', () => { saveInitials(); newRound(); }, { sc: 1 });
-  button(cx + 54, ly + 10, 96, 17, 'TITLE', () => { saveInitials(); toTitle(); });
+  button(cx + 54, ly + 10, 96, 17, 'HOME', () => { saveInitials(); toTitle(); });
 }
 // Jerry in his chair, left of the station: just out of frame while you shoot,
 // centre stage when the camera swings over to him
@@ -2827,7 +2838,7 @@ addEventListener('keydown', e => {
   if (k === 'h' || k === 'H') { openHelp(); return; }
   if (k === 'Escape' && game.state === 'talk' && game.talk.kind === 'help') { endTalk(); return; }   // Esc closes help, not the round
   if (k === 'Escape' && game.state === 'summary') { toTitle(); return; }
-  if (k === 'Escape' && game.state !== 'title') {   // mid-round: press twice, like the Title button
+  if (k === 'Escape' && game.state !== 'title') {   // mid-round: press twice, like the Home button
     if (time < game.quitArmedUntil) toTitle();
     else { game.quitArmedUntil = time + 2.5; say('PRESS ESC AGAIN TO QUIT', C_YEL, 2.5, 1, 100); SFX.ui(); }
     return;
