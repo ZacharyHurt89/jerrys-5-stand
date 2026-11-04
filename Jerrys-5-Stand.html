@@ -211,8 +211,609 @@ const SFX = {
   ui()     { tone(0.04, { f: 880, g: 0.05 }); },
   fanfare(){ [523, 659, 784, 1047].forEach((f, i) => tone(0.14, { f, g: 0.07, delay: i * 0.12 })); },
   clap()   { noise(0.07, { type: 'bandpass', f: 1600, q: 0.8, g: 0.4 }); },
+  thud()   { noise(0.25, { f: 400, f2: 60, g: 0.7 }); tone(0.2, { type: 'sine', f: 90, f2: 40, g: 0.35 }); },
+  woof()   { for (const d of [0, 0.32]) { tone(0.12, { type: 'square', f: 260, f2: 150, g: 0.05, delay: d }); noise(0.1, { type: 'bandpass', f: 600, f2: 350, q: 1.2, g: 0.25, delay: d }); } },
   blip()   { tone(0.03, { f: 200 + Math.random() * 60, g: 0.025 }); },
 };
+
+// ---- music: original tunes in an ocarina-and-harp style, synthesised like the sound effects ----
+// Waltz time (3 beats a bar), folk modes. Melodies are "note:beats" (R = rest); chords are one per bar.
+const NOTE_IX = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const midi = s => { const m = /^([A-G])(#|b)?(\d)$/.exec(s); return 12 * (+m[3] + 1) + NOTE_IX[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0); };
+const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+const CHORDS = { D: ['D3', 'F#3', 'A3'], Em: ['E3', 'G3', 'B3'], G: ['G3', 'B3', 'D4'], Am: ['A3', 'C4', 'E4'], C: ['C4', 'E4', 'G4'] };
+const TUNES = {
+  // title: D mixolydian, A / A' / B
+  title: {
+    mel: 'D5:2 A4:1  C5:1.5 B4:.5 G4:1  B4:2 D5:1  A4:3  D5:2 E5:1  E5:1.5 D5:.5 C5:1  B4:1 A4:1 G4:1  A4:3 ' +
+         'D5:2 A4:1  C5:1.5 B4:.5 G4:1  B4:2 D5:1  A4:3  D5:2 E5:1  G5:1.5 E5:.5 C5:1  E5:1 D5:1 C5:1  D5:3 ' +
+         'B4:1 D5:1 G5:1  G5:2 F#5:1  E5:2 D5:1  A4:3  B4:1 D5:1 G5:1  G5:1.5 F#5:.5 E5:1  E5:1 D5:1 C5:1  D5:2 A4:1',
+    chords: 'D C G D D C G D  D C G D D C Am D  G Em C D G Em C D' },
+  // Jerry's theme: slower, A dorian
+  jerry: {
+    mel: 'E5:2 C5:1  D5:2 A4:1  C5:1 B4:1 A4:1  B4:3  E5:2 G5:1  F#5:2 E5:1  E5:1 D5:1 C5:1  B4:3 ' +
+         'A4:1 C5:1 E5:1  F#5:2 D5:1  G5:1.5 F#5:.5 D5:1  E5:3  C5:2 B4:1  A4:1 F#4:1 A4:1  B4:1.5 A4:.5 G4:1  A4:3',
+    chords: 'Am D Am G Am D C Em Am D G C Am D Em Am' },
+  // Mt Shasta, the home song: an upbeat fingerpicked-guitar tune in G with a real shape to it.
+  // Intro (guitar alone) / verse / chorus / quiet bridge / last chorus with a harmony line.
+  shasta: {
+    mel: 'R:16 ' +
+         'R:.5 D5:.5 G5:1 G5:.5 A5:.5 B5:1  A5:1.5 F#5:.5 D5:2  R:.5 E5:.5 G5:1 B5:1 A5:1  G5:1 E5:1 C5:2 ' +
+         'R:.5 D5:.5 G5:1 G5:.5 A5:.5 B5:1  A5:1 B5:.5 A5:.5 F#5:2  G5:1.5 E5:.5 C5:1 E5:1  F#5:1 E5:1 D5:2 ' +
+         'E5:1 G5:1 C6:2  B5:1.5 A5:.5 G5:2  A5:1 F#5:1 D5:1 A5:1  G5:2 E5:2 ' +
+         'C6:1.5 B5:.5 A5:1 G5:1  B5:1 A5:1 G5:2  A5:.5 B5:.5 A5:1 F#5:1 D5:1  G5:4 ' +
+         'B4:2 E5:2  G5:2 E5:2  D5:1 G5:1 B5:2  A5:4 ' +
+         'E5:1 G5:1 C6:2  B5:1.5 A5:.5 G5:2  A5:1 F#5:1 D5:1 A5:1  G5:2 E5:2 ' +
+         'C6:1.5 B5:.5 A5:1 G5:1  B5:1 A5:1 G5:2  A5:.5 B5:.5 A5:1 F#5:1 D5:1  G5:4',
+    // harmony under the last chorus
+    mel2: 'R:96 ' +
+         'C5:1 E5:1 A5:2  G5:1.5 F#5:.5 D5:2  F#5:1 D5:1 A4:1 F#5:1  E5:2 B4:2 ' +
+         'A5:1.5 G5:.5 E5:1 E5:1  G5:1 F#5:1 D5:2  F#5:.5 G5:.5 F#5:1 D5:1 A4:1  D5:4',
+    chords: 'G C G D  G D Em C G D C D  C G D Em C G D G  Em C G D  C G D Em C G D G' },
+  // high desert: four to the bar, A dorian, lots of space between phrases
+  desert: {
+    mel: 'A4:1.5 C5:.5 E5:2  D5:1 B4:1 G4:2  A4:1 E5:1 D5:1 C5:1  B4:4  A4:1.5 C5:.5 E5:1 G5:1  F#5:2 E5:1 D5:1  E5:1 D5:1 C5:1 B4:1  A4:4 ' +
+         'A4:1 D5:1 F#5:2  E5:2 C5:2  D5:1.5 B4:.5 G4:1 B4:1  B4:4  C5:1 B4:1 A4:1 C5:1  D5:2 F#5:2  E5:1 D5:1 B4:2  A4:4',
+    chords: 'Am G Am Em Am D C Am D Am G Em Am D Em Am' },
+  // the plains: bright G major, four to the bar, a skip in its step
+  plains: {
+    mel: 'D5:1 B4:.5 D5:.5 G5:2  E5:1 G5:1 E5:2  D5:1 B4:1 G4:1 B4:1  A4:3 R:1  B4:1 D5:1 G5:1 A5:1  G5:1 E5:1 C5:2  D5:1 E5:1 F#5:1 A5:1  G5:3 R:1 ' +
+         'E5:1 G5:1 B5:2  A5:1 G5:1 E5:2  D5:1 G5:1 B4:1 D5:1  A4:4  E5:1.5 G5:.5 A5:2  G5:1 D5:1 B4:2  A4:1 D5:1 F#5:1 A5:1  G5:4',
+    chords: 'G C G D G C D G Em C G D C G D G' },
+  good:    { mel: 'A4:.5 D5:.5 F#5:.5 A5:2.5', chords: 'D D' },
+  rough:   { mel: 'A4:1 G4:.5 F#4:.5 E4:1 D4:3', chords: 'D Em D' },
+  perfect: { mel: 'D5:.33 E5:.33 F#5:.34 A5:.33 G5:.33 A5:.34 D6:3', chords: 'D G D' },
+};
+// how each tune is played; each backdrop has its own tune and arrangement
+const SCENE_TUNE = { classic: 'title', shasta: 'shasta', desert: 'desert', plains: 'plains' };
+const ARRANGE = {
+  classic: { bpm: 96, harp: 'eighths', bass: 'long' },
+  shasta:  { bpm: 100, meter: 4, harp: 'travis', bass: 'bounce', leadInst: 'keys', lead: 0.2, drums: 4 },   // soft fingerpicked guitar, warm keys, brushes from bar 5
+  desert:  { bpm: 104, meter: 4, harp: 'roll', bass: 'bounce', shaker: true, lead: 0.06 },     // banjo rolls, boom-chick bass, cowboy whistle
+  plains:  { bpm: 112, meter: 4, harp: 'quarters', bass: 'bounce' },
+  jerry:   { bpm: 70, harp: 'quarters', bass: 'long', lead: 0.055 },
+  good:    { bpm: 120, harp: 'sparse', bass: 'long', once: true },
+  rough:   { bpm: 90, harp: 'sparse', bass: 'long', once: true, lead: 0.05 },
+  perfect: { bpm: 110, harp: 'eighths', bass: 'long', once: true },
+};
+function compileTune(tune, v) {
+  const ev = [], tr = v.tr || 0;
+  // chords: one per bar, either names ("D C G") or, for radio songs read from notation, [root, third, fifth] midi
+  const bars = tune.chordMidi || tune.chords.trim().split(/\s+/).map(c => CHORDS[c].map(midi));
+  let t = 0;
+  if (tune.notes) { for (const n of tune.notes) ev.push({ t: n.t, d: n.d, m: n.m + tr, i: 'lead' }); t = tune.len; }
+  for (const [str, inst] of [[tune.mel, 'lead'], [tune.mel2, 'lead2']]) {
+    if (!str) continue;
+    let tt = 0;
+    for (const tok of str.trim().split(/\s+/)) {
+      const [n, d] = tok.split(':');
+      if (n !== 'R') ev.push({ t: tt, d: +d, m: midi(n) + tr, i: inst });
+      tt += +d;
+    }
+    t = Math.max(t, tt);
+  }
+  const M = tune.meter || v.meter || 3;   // beats to the bar: waltzes in 3, most others in 4, reels in 2
+  bars.forEach((c, b) => {
+    const [a, x, y] = c.map(n => n + tr), t0 = b * M, u = 12 + (v.harpUp || 0);
+    if (v.bass === 'bounce') ev.push({ t: t0, d: 1, m: a - 12, i: 'bass' }, { t: t0 + (M >= 3 ? 2 : 1), d: 1, m: y - 12, i: 'bass' });
+    else if (v.bass !== 'none') ev.push({ t: t0, d: M, m: a - 12, i: 'bass' });
+    const H = (k, n) => ev.push({ t: t0 + k, d: 1.5, m: n + u, i: 'harp' });
+    const P = (k, n, i) => ev.push({ t: t0 + k, d: 1, m: n, i });
+    if (v.harp === 'travis') {
+      // thumb alternates root and fifth on the beat; fingers pick chord tones in between, with a pinch on one
+      [a - 12, y - 12, a - 12, y - 12].slice(0, M).forEach((n, k) => P(k, n, 'gtr'));
+      P(0, a + 12, 'gtr'); [x, y, a + 12, x + 12].slice(0, M).forEach((n, k) => P(k + 0.5, n, 'gtr'));
+    } else if (v.harp === 'roll') {
+      // banjo forward roll, eighth notes, with the high fifth ringing like a drone string
+      [a, x + 12, y + 12, a + 12, x + 12, y + 12, a + 12, x + 12].slice(0, M * 2).forEach((n, k) => P(k * 0.5, n, 'banjo'));
+    } else if (v.harp === 'eighths') [a, y, a + 12, x + 12, y, x, a + 12, y].slice(0, M * 2).forEach((n, k) => H(k * 0.5, n));
+    else if (v.harp === 'quarters') for (let k = 1; k < M; k++) { H(k, x); H(k, y); }
+    else { H(0, a); H(M === 4 ? 2.5 : M === 2 ? 1 : 1.5, y); }
+    if (v.shaker) (M === 4 ? [1, 1.5, 3, 3.5] : M === 2 ? [0.5, 1, 1.5] : [1, 2, 2.5]).forEach(k => ev.push({ t: t0 + k, d: 0.1, i: 'shake' }));
+    if (v.drums !== undefined && b >= v.drums && M === 4) {   // soft kick on 1 and 3, brushes on 2 and 4
+      ev.push({ t: t0, d: 0.2, i: 'kick' }, { t: t0 + 2, d: 0.2, i: 'kick' }, { t: t0 + 1, d: 0.2, i: 'brush' }, { t: t0 + 3, d: 0.2, i: 'brush' });
+    }
+  });
+  ev.sort((p, q) => p.t - q.t);
+  return { ev, len: Math.max(t, bars.length * M), spb: 60 / v.bpm, v, M };
+}
+// ---- Jerry Radio: old public-domain tunes read straight from ABC notation (the folk-music
+//      standard), with chords worked out bar by bar to fit the melody -----------------------
+const ABC_STEP = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const MODE_SHIFT = { '': 0, maj: 0, ion: 0, m: 9, min: 9, aeo: 9, mix: 7, dor: 2, phr: 4, lyd: 5, loc: 11 };   // mode tonic above its parent major
+const FIFTHS = { 0: 0, 7: 1, 2: 2, 9: 3, 4: 4, 11: 5, 6: 6, 5: -1, 10: -2, 3: -3, 8: -4, 1: -5 };
+function keySig(K) {
+  const m = /^([A-G])([#b]?)\s*([A-Za-z]*)/.exec(K.trim()) || ['', 'C', '', ''];
+  const tonic = (ABC_STEP[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + 12) % 12;
+  const mk = m[3] === 'm' ? 'm' : m[3].toLowerCase().slice(0, 3);
+  const major = (tonic - (MODE_SHIFT[mk] ?? 0) + 12) % 12, n = FIFTHS[major], acc = {};
+  if (n > 0) [5, 0, 7, 2, 9, 4, 11].slice(0, n).forEach(s => acc[s] = 1);    // F# C# G# ...
+  if (n < 0) [11, 4, 9, 2, 7, 0, 5].slice(0, -n).forEach(s => acc[s] = -1);  // Bb Eb Ab ...
+  return { tonic, major, acc };
+}
+function parseABC(abc) {
+  let L = 1 / 8, Mn = 4, Md = 4, K = 'C';
+  const body = [];
+  for (const raw of abc.split('\n')) {
+    const line = raw.trim(); if (!line) continue;
+    const h = /^([A-Za-z]):(.*)$/.exec(line);
+    if (h) {
+      if (h[1] === 'L') { const [a, b] = h[2].trim().split('/'); L = +a / +b; }
+      else if (h[1] === 'M') { const v = h[2].trim(); if (v === 'C') { Mn = 4; Md = 4; } else if (v === 'C|') { Mn = 2; Md = 2; } else { const [a, b] = v.split('/'); Mn = +a; Md = +b; } }
+      else if (h[1] === 'K') K = h[2];
+      continue;   // other fields (titles, lyrics) are skipped
+    }
+    body.push(line.replace(/%.*$/, ''));
+  }
+  const sig = keySig(K), meter = Mn * 4 / Md;
+  const src = body.join(' ').replace(/"[^"]*"/g, '').replace(/![^!]*!/g, '').replace(/\{[^}]*\}/g, '').replace(/\[[A-Za-z]:[^\]]*\]/g, '');
+  const toks = src.match(/\|:|:\|\d|:\|\]?|::|\|\]|\|\||\[\||\[\d|\|\d|\||\(\d|[\^_=]*[A-Ga-gzx][,']*\d*\/*\d*|[<>\-\[\]]/g) || [];
+  // play out the repeats and first/second endings
+  const seq = []; let start = 0, pass = 1, skipping = false; const done = new Set();
+  for (let i = 0; i < toks.length; i++) {
+    const k = toks[i];
+    if (skipping && k !== '[2' && k !== '|2' && k !== ':|2') continue;
+    if (k === '|:') { start = i + 1; pass = 1; seq.push('|'); continue; }
+    if (k === '[1' || k === '|1') { if (k === '|1') seq.push('|'); if (pass === 2) skipping = true; continue; }
+    if (k === '[2' || k === '|2') { if (k === '|2') seq.push('|'); skipping = false; pass = 1; continue; }
+    if (k.startsWith(':|') || k === '::') {
+      seq.push('|');
+      if (pass === 1 && !done.has(i)) { done.add(i); pass = 2; i = start - 1; continue; }
+      pass = 1; skipping = false; start = i + 1; continue;   // second time through: on into the second ending
+    }
+    seq.push(k);
+  }
+  // notes: pitch, length in beats (quarter notes), ties, broken rhythm, triplets, bar accidentals
+  const notes = []; let t = 0, barAcc = {}, tie = false, broken = null, tuplet = 0, tupF = 1, inChord = false, chordFirst = false, firstBar = null;
+  for (const k of seq) {
+    if (k === '|' || k === '||' || k === '|]' || k === '[|') { barAcc = {}; if (firstBar === null && t > 0) firstBar = t; continue; }
+    if (k === '-') { tie = true; continue; }
+    if (k === '>' || k === '<') { broken = k; const p = notes[notes.length - 1]; if (p) { const nd = p.d * (k === '>' ? 1.5 : 0.5); t += nd - p.d; p.d = nd; } continue; }
+    if (k[0] === '(') { const p = +k[1]; tuplet = p; tupF = p === 3 ? 2 / 3 : p === 2 ? 3 / 2 : p === 4 ? 3 / 4 : (p - 1) / p; continue; }
+    if (k === '[') { inChord = true; chordFirst = true; continue; }
+    if (k === ']') { inChord = false; continue; }
+    const m = /^([\^_=]*)([A-Ga-gzx])([,']*)(\d*)(\/*)(\d*)$/.exec(k); if (!m) continue;
+    if (inChord && !chordFirst) continue;   // a written chord: keep its first note as the melody
+    chordFirst = false;
+    let mult = (m[4] ? +m[4] : 1);
+    if (m[5]) mult /= m[6] ? +m[6] : Math.pow(2, m[5].length);
+    if (broken) { mult *= broken === '>' ? 0.5 : 1.5; broken = null; }
+    if (tuplet > 0) { mult *= tupF; tuplet--; }
+    const d = mult * L * 4;
+    if (m[2] === 'z' || m[2] === 'x') { t += d; tie = false; continue; }
+    const up = m[2].toUpperCase(), step = ABC_STEP[up];
+    let oct = (m[2] === up ? 60 : 72);
+    for (const c of m[3]) oct += c === "'" ? 12 : -12;
+    const id = up + oct;
+    let acc;
+    if (m[1]) { acc = 0; for (const c of m[1]) acc += c === '^' ? 1 : c === '_' ? -1 : 0; barAcc[id] = acc; }
+    else acc = barAcc[id] ?? sig.acc[step] ?? 0;
+    const pitch = oct + step + acc, prev = notes[notes.length - 1];
+    if (tie && prev && prev.m === pitch) prev.d += d; else notes.push({ t, d, m: pitch });
+    tie = false; t += d;
+  }
+  // a pickup bar is padded out so the downbeats line up
+  const off = firstBar !== null && firstBar < meter - 0.01 ? meter - firstBar : 0;
+  notes.forEach(n => { n.t += off; });
+  const len = t + off;
+  // sit the melody around C5 for the lead voice
+  const avg = notes.reduce((a, n) => a + n.m * n.d, 0) / notes.reduce((a, n) => a + n.d, 0);
+  let shift = 12 * Math.round((72 - avg) / 12);
+  const hi = Math.max(...notes.map(n => n.m)), lo = Math.min(...notes.map(n => n.m));
+  if (hi + shift > 86) shift -= 12;        // keep the top below a shrill D6
+  else if (lo + shift < 55) shift += 12;   // and the bottom above G3
+  notes.forEach(n => { n.m += shift; });
+  return { notes, len, meter, chordMidi: harmonize(notes, len, meter, sig) };
+}
+// pick the chord for each bar from the key's own triads: the one that holds most of the bar's notes,
+// with a lean toward I, V and IV, the tonic at the start and the end, and a little stickiness
+function harmonize(notes, len, meter, sig) {
+  const scale = [0, 2, 4, 5, 7, 9, 11].map(s => (s + sig.major) % 12);
+  const deg0 = scale.indexOf(sig.tonic);
+  const PREF = [1, 0.45, 0.35, 0.8, 0.85, 0.55, 0.6];   // by degree above the tonic: I ii iii IV V vi VII
+  const cands = [];
+  for (let i = 0; i < 7; i++) {
+    const r = scale[i], th = scale[(i + 2) % 7], fi = scale[(i + 4) % 7];
+    if ((fi - r + 12) % 12 !== 7) continue;   // skip the diminished triad
+    cands.push({ pcs: [r, th, fi], pref: PREF[(i - deg0 + 7) % 7], tonic: r === sig.tonic });
+  }
+  const bars = Math.max(1, Math.ceil(len / meter - 0.01)), out = [];
+  let prev = null;
+  for (let b = 0; b < bars; b++) {
+    const s = b * meter, e = s + meter;
+    let best = null, bestScore = -1e9;
+    for (const c of cands) {
+      let sc = c.pref * 0.6;
+      for (const n of notes) {
+        const ov = Math.min(e, n.t + n.d) - Math.max(s, n.t); if (ov <= 0) continue;
+        const w = ov * (Math.abs(n.t - s) < 0.01 ? 1.5 : 1);
+        sc += c.pcs.includes(((n.m % 12) + 12) % 12) ? w : -0.3 * w;
+      }
+      if (c.tonic && (b === 0 || b === bars - 1)) sc += 2;
+      if (c === prev) sc += 0.2;
+      if (sc > bestScore) { bestScore = sc; best = c; }
+    }
+    prev = best;
+    let root = 48 + best.pcs[0]; if (root < 50) root += 12;
+    out.push([root, root + ((best.pcs[1] - best.pcs[0] + 12) % 12), root + ((best.pcs[2] - best.pcs[0] + 12) % 12)]);
+  }
+  return out;
+}
+// radio arrangements
+const RADIO_ARR = {
+  folk:   { harp: 'travis', bass: 'bounce', leadInst: 'keys', lead: 0.1 },   // fingerpicked guitar and warm keys
+  banjo:  { harp: 'roll', bass: 'bounce', shaker: true, lead: 0.06 },        // banjo rolls and a whistled tune
+  cowboy: { harp: 'travis', bass: 'long', leadInst: 'harmonica', lead: 0.09 }, // campfire guitar and harmonica
+  fiddle: { harp: 'roll', bass: 'bounce', leadInst: 'fiddle', lead: 0.075 },   // fiddle tune with banjo backing
+  hymn:   { harp: 'quarters', bass: 'long', lead: 0.06 },                    // harp and ocarina
+  plains: { harp: 'quarters', bass: 'bounce', lead: 0.065 },
+  waltz:  { harp: 'eighths', bass: 'long', lead: 0.065 },
+};
+// The playlist: traditional and 19th-century tunes, all public domain. Melody notation from
+// abcnotation.com: Paul Hardy's Session Tunebook (pghardy.net, CC BY-NC-SA), the Digital Tradition
+// collection, and Frank Nordberg's musicaviva transcriptions. Chords are worked out in-game.
+const RADIO = [
+  { title: 'SHENANDOAH', arr: 'folk', bpm: 70, abc: `M:4/4
+L:1/8
+K:G
+D2|GG G3 ABc|e4d2 gf|e4-ed ed|B/d/-d4 z2d|
+eee3B dB|A2 G3z GA|B4-BG Be|d2GA B3G|A2 G4|]` },
+  { title: 'WILDWOOD FLOWER', arr: 'folk', bpm: 104, abc: `M:4/4
+L:1/8
+K:C
+z4 z2 EF| G2 Ac E2 FE| D2 FB, C2 EF| G2 Ac E2 FE| D2 FB, C2 G2| e2 ed c2 GG|
+A2 BA G2 E2| E2 ED E2 GE| D2 FB, C2 z2|` },
+  { title: 'RED RIVER VALLEY', arr: 'cowboy', bpm: 92, abc: `M:2/4
+L:1/8
+K:G
+DG|B2 BB|B2 AB|A G3-|G2 DG|B2 GB|d2 c B|A4-|A2 dc|
+B2 BA|G2 AB|d c3-|c2 EE|D2 FG|A2 BA|G2-G2-|G2|]` },
+  { title: 'HOME ON THE RANGE', arr: 'cowboy', bpm: 100, abc: `M:3/4
+L:1/4
+K:G
+D|DGA|B2G/F/|Ecc|c2B/c/|
+d>GG|GFG|A3-|Az D/D/|
+DGA|B2G/F/|Ecc|c2c/c/|
+B>AG|FGA|G3-|G z2||
+d3|cB>A|B3-|B z D/D/|
+G>GG|GFG|A3-|A z D/D/|
+DGA|B2G/F/|Ecc|c2c/c/|
+B>AG|FGA|G3-|G z|]` },
+  { title: 'STREETS OF LAREDO', arr: 'waltz', bpm: 96, abc: `M:3/4
+L:1/8
+K:G
+D2|d4 cB|c2 d3 c|B2 A2 G2|F2 D3 D|G4 FG|A2 B3 c|B2 A2 G2|A4 D2|
+d2 ed cB|c2 d3 c|B2 A2 G2|F2 D2 D2|G4 FG|A2 d3 c|B2 G2 A2|G4||` },
+  { title: 'GIT ALONG, LITTLE DOGIES', arr: 'banjo', bpm: 116, abc: `M:6/8
+L:1/8
+K:C
+z4 z D| F3/2 D/2 D FFF| GGG DCC| E3/2 E/2 C FFF| G/2 G3/2 G C2 C|
+E3/2 E/2 E FFF| GGG DCC| E2 C FFF| G/2 G3/2 G C2 G/2G/2| _B2 BB-G B/2B/2|
+c3/2- d/2c/2 A/2 GFF| G2 G ccc| c/2 c3/2 c G2 C/2C/2| C2 CE-C C/2C/2|
+G3/2- A/2G/2 E/2 DC C/2C/2|E-C C FFF| G3/2 G/2 G C2 z|` },
+  { title: 'OLD JOE CLARK', arr: 'fiddle', bpm: 160, abc: `M:4/4
+L:1/8
+K:Amix
+e2 f2 g2 f2|e2 d2 c4|e2 f2 g2 f2|e4 e2 z2|e2 f2 g2 f2|e2 d2 c4|A2 c2 B2 G2|A4 A2 z2:|
+|:A3 A A4|e2 d2 c4|A3 A A2 A2|G4 z4|A3 A A4|e2 d2 c4|A2 c2 B2 G2|A4 A2 z2:|` },
+  { title: 'OH! SUSANNA', arr: 'plains', bpm: 120, abc: `M:4/4
+L:1/4
+K:G
+G/A/|Bd d>e|dB G>A|BB AG|A3G/A/|Bd d>e|dB G>A|BB AA|G3:|
+G|c2c2|ee2e|dd BG|A3G/A/|Bd d>e|dB G>A|BB AA|G3|]` },
+  { title: 'TURKEY IN THE STRAW', arr: 'fiddle', bpm: 132, abc: `M:4/4
+L:1/8
+K:D
+fe|dcde d2 FG|ABAF A2 de|f2 f2 fede|f2 e2 e2 fe|
+dcde d2 FG|ABAF A2 de|f a2 b afde|f2 e2 d2:|
+|:a2|f a2 f a2 a2|f a2 f a2 a2|g b2 g b2 b2|g b2 g b2 b2|
+d'2 d'2 a2 a2|f2 f2 e2 de|f a2 b afde|f2 e2 d2:|` },
+  { title: 'ARKANSAS TRAVELER', arr: 'fiddle', bpm: 132, abc: `M:4/4
+L:1/8
+K:D
+A2 |: dfed B2B2 | A2A2 d2d2 | e2e2 f2f2 | efed B2A2 |
+|dfed B2B2 | A2A2 d4 | dcdA BdAG |1 F2E2D2A2:|2 F2E2D2 fg||
+|: agfa gfeg | fedf e2A2 | dcde fefg | afdf e2fg |
+|agfa gfeg | fedf e2A2 | dcdA BdAG |1 F2E2D2 fg:|2 F2E2D2 A2 ||` },
+  { title: "SHE'LL BE COMING 'ROUND THE MOUNTAIN", arr: 'plains', bpm: 128, abc: `M:4/4
+L:1/4
+K:D
+AB|dd dd|BA FA|d4-|d2 de|ff ff|aa af|e4-|e2 ag|
+ff f2|ed3|dd d2|gg2g|ff f2|ee ee|d4-|d2|]` },
+  { title: 'WABASH CANNONBALL', arr: 'cowboy', bpm: 120, abc: `M:4/4
+L:1/4
+K:G
+D/2D/2| D D G3/2 A/2| B d2 d/2d/2| B B A G| C3 E/2E/2| D D F A| B A2 G/2G/2|
+F G F E| D3D/2-D/2| D D G3/2 A/2| B d2 c/2c/2| B B A G| C3 E/2E/2|
+D F A3/2 A/2| B A A3/2 G/2| F D E F| G3||` },
+  { title: 'CAMPTOWN RACES', arr: 'banjo', bpm: 168, abc: `M:2/2
+L:1/4
+K:D
+A|AA FA|BA F2|FE3|FE2 A|A>A FA|BA F2|E2 FE|D3:|
+|:F|D>D FA|d2-dz|B>B dB|A3 F|AA FA|BA F2|EF/G/ FE/E/|D3:|` },
+  { title: 'DOWN IN THE VALLEY', arr: 'waltz', bpm: 100, abc: `M:3/4
+L:1/4
+K:F
+CFG|A3|F3-|F z z|AGF|G3-|G3-|G z z|
+CEG|B3|G3-|G z z|EFG|F3-|F3-|F z z|]` },
+  { title: 'AMAZING GRACE', arr: 'hymn', bpm: 72, abc: `M:3/4
+L:1/4
+K:G
+D|G2 B/G/|B2 A|G2 E|D2 D|G2 B/G/|B2 A/B/|d3-|dzB|
+d2 B/G/|B2A|G2 E|D2 D|G2 (3B/A/G/|B2 A|G3-|G2|]` },
+  { title: 'DANNY BOY', arr: 'folk', bpm: 66, abc: `M:4/4
+L:1/8
+K:C
+B,CD|E3D EAGE|DCA,2 z CEF|G3A GECE|D4 z B,CD|
+E3D EAGE|DCA,2 z B,CD|E3F EDCD|C4 z GAB|
+c3B BAGA|GEC2 z GAB|c3B BAGE|D4 z GGG|
+e3d dcAc|GEC2 z B,CD|EAGE DCA,B,|C6|]` },
+];
+const RADIO_CACHE = {};
+function radioSong(i) {
+  if (!RADIO_CACHE[i]) { const r = RADIO[i]; RADIO_CACHE[i] = compileTune(parseABC(r.abc), Object.assign({ bpm: r.bpm, once: true }, RADIO_ARR[r.arr])); }
+  return RADIO_CACHE[i];
+}
+// instruments
+function ocarina(bus, t, f, d, g) {
+  const a = AC, o = a.createOscillator(), o2 = a.createOscillator(), gn = a.createGain(), g2 = a.createGain();
+  o.type = 'sine'; o2.type = 'triangle'; o.frequency.value = f; o2.frequency.value = f; g2.gain.value = 0.3;
+  if (d > 0.45) {   // breathy vibrato that eases in on held notes
+    const l = a.createOscillator(), lg = a.createGain();
+    l.frequency.value = 5.2; lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f * 0.007, t + Math.min(0.5, d * 0.6));
+    l.connect(lg); lg.connect(o.frequency); lg.connect(o2.frequency); l.start(t); l.stop(t + d + 0.2);
+  }
+  gn.gain.setValueAtTime(0.0001, t); gn.gain.linearRampToValueAtTime(g, t + 0.05);
+  gn.gain.setValueAtTime(g, t + Math.max(0.06, d - 0.08)); gn.gain.linearRampToValueAtTime(0.0001, t + d + 0.12);
+  o.connect(gn); o2.connect(g2).connect(gn); gn.connect(bus);
+  o.start(t); o2.start(t); o.stop(t + d + 0.2); o2.stop(t + d + 0.2);
+}
+// plucked strings (Karplus-Strong): a burst of noise fed round a loop one string-period long.
+// Each kind differs in how soft the pluck is (how smoothed the starting noise), how long it rings,
+// and the filters after it: banjo bright and short, guitar warm with a woody body, harp clear and
+// long, bass round and deep.
+const PLUCK = {
+  //        soften  passes  damp    ring(s) fade(s)
+  banjo: { soft: 0,    passes: 0, damp: 0.992,  len: 0.9, fade: 0.8 },
+  gtr:   { soft: 0.75, passes: 2, damp: 0.9975, len: 2.4, fade: 1.3 },
+  harp:  { soft: 0.5,  passes: 1, damp: 0.9985, len: 2.0, fade: 1.8 },
+  bass:  { soft: 0.85, passes: 2, damp: 0.995,  len: 1.6, fade: 1.0 },
+};
+const PLUCK_CACHE = {};
+function pluckBuffer(m, kind) {
+  const k = kind + m;
+  if (PLUCK_CACHE[k]) return PLUCK_CACHE[k];
+  const P = PLUCK[kind], sr = AC.sampleRate, len = Math.floor(sr * P.len);
+  const buf = AC.createBuffer(1, len, sr), d = buf.getChannelData(0);
+  // The loop is a whole number of samples, and averaging each sample with the one after it shortens
+  // the cycle by half a sample, so the raw string lands off pitch by a different amount on every note.
+  // The playback speed is set to bring it back exactly onto the note.
+  const f = hz(m), N = Math.max(2, Math.floor(sr / f + 0.5)), ring = new Float32Array(N);
+  buf.rate = f / (sr / (N - 0.5));
+  let prev = 0;
+  for (let i = 0; i < N; i++) { const r = Math.random() * 2 - 1; ring[i] = prev = prev * P.soft + r * (1 - P.soft); }
+  for (let p = 0; p < P.passes; p++) for (let i = 0; i < N; i++) ring[i] = (ring[i] + ring[(i + 1) % N]) * 0.5;
+  let peak = 0; for (let i = 0; i < N; i++) peak = Math.max(peak, Math.abs(ring[i]));
+  for (let i = 0; i < N; i++) ring[i] /= peak || 1;   // same loudness whatever the softening
+  for (let i = 0, j = 0; i < len; i++) {
+    d[i] = ring[j];
+    ring[j] = P.damp * 0.5 * (ring[j] + ring[(j + 1) % N]);
+    j = (j + 1) % N;
+  }
+  return (PLUCK_CACHE[k] = buf);
+}
+function pluck(bus, t, m, kind, g) {
+  const a = AC, s = a.createBufferSource(), gn = a.createGain(), chain = [];
+  const F = (type, f, q, gain) => { const fl = a.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q; if (gain) fl.gain.value = gain; chain.push(fl); };
+  s.buffer = pluckBuffer(m, kind); s.playbackRate.value = s.buffer.rate;   // exactly in tune
+  if (kind === 'banjo') F('peaking', 2400, 0.9, 8);
+  else if (kind === 'gtr') { F('peaking', 115, 0.9, 5); F('peaking', 240, 1.2, 3); F('lowpass', 2300, 0.5); }   // a guitar body, not a muffle
+  else if (kind === 'harp') F('lowpass', 3600, 0.5);
+  else F('lowpass', 650, 0.6);
+  gn.gain.setValueAtTime(0.0001, t); gn.gain.linearRampToValueAtTime(g, t + 0.006);   // no click at the start
+  gn.gain.exponentialRampToValueAtTime(0.0005, t + PLUCK[kind].fade);
+  let node = s; for (const fl of chain) node = node.connect(fl);
+  node.connect(gn).connect(bus); s.start(t); s.stop(t + s.buffer.duration);
+}
+// bowed fiddle: two slightly detuned saws through the body's resonances, a bow-speed attack and
+// vibrato that comes in on held notes
+function fiddle(bus, t, f, d, g) {
+  const a = AC, out = a.createGain(), end = t + d + 0.08, nodes = [];
+  for (const det of [1, 1.0015]) { const o = a.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f * det; nodes.push(o); }
+  const F = (type, fr, q, gain) => { const fl = a.createBiquadFilter(); fl.type = type; fl.frequency.value = fr; fl.Q.value = q; if (gain !== undefined) fl.gain.value = gain; return fl; };
+  const chain = [F('peaking', 450, 1.2, 6), F('peaking', 2800, 1.5, 5), F('lowpass', 4200, 0.7), F('highpass', 180, 0.7)];
+  if (d > 0.35) {
+    const l = a.createOscillator(), lg = a.createGain();
+    l.frequency.value = 5.8; lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f * 0.006, t + Math.min(0.4, d * 0.5));
+    l.connect(lg); nodes.forEach(o => lg.connect(o.frequency)); l.start(t); l.stop(end);
+  }
+  const mix = a.createGain(); mix.gain.value = 0.5;
+  nodes.forEach(o => { o.connect(mix); o.start(t); o.stop(end + 0.05); });
+  let node = mix; for (const fl of chain) node = node.connect(fl);
+  out.gain.setValueAtTime(0.0001, t); out.gain.linearRampToValueAtTime(g, t + 0.035); out.gain.linearRampToValueAtTime(g * 0.85, t + Math.max(0.05, d * 0.6));
+  out.gain.setValueAtTime(g * 0.85, t + Math.max(0.06, d - 0.03)); out.gain.linearRampToValueAtTime(0.0001, end);
+  node.connect(out).connect(bus);
+}
+// harmonica: a reedy square-and-saw mix through a cupped-hands filter, with a slow hand tremolo
+function harmonica(bus, t, f, d, g) {
+  const a = AC, out = a.createGain(), end = t + d + 0.06, mix = a.createGain(), bp = a.createBiquadFilter(), lp = a.createBiquadFilter();
+  const o1 = a.createOscillator(), o2 = a.createOscillator();
+  o1.type = 'square'; o2.type = 'sawtooth'; o1.frequency.value = f; o2.frequency.value = f * 1.001;
+  mix.gain.value = 0.5; bp.type = 'bandpass'; bp.frequency.value = 1300; bp.Q.value = 0.6; lp.type = 'lowpass'; lp.frequency.value = 3200;
+  o1.connect(mix); o2.connect(mix); mix.connect(bp).connect(lp).connect(out).connect(bus);
+  out.gain.setValueAtTime(0.0001, t); out.gain.linearRampToValueAtTime(g, t + 0.04);
+  out.gain.setValueAtTime(g, t + Math.max(0.05, d - 0.04)); out.gain.linearRampToValueAtTime(0.0001, end);
+  if (d > 0.5) {   // hand tremolo on long notes
+    const l = a.createOscillator(), lg = a.createGain();
+    l.frequency.value = 4.5; lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(g * 0.25, t + 0.4);
+    l.connect(lg).connect(out.gain); l.start(t); l.stop(end);
+  }
+  o1.start(t); o2.start(t); o1.stop(end + 0.05); o2.stop(end + 0.05);
+}
+// warm electric-piano keys: a round sine with a soft bell on the attack, fading as it's held
+function keys(bus, t, f, d, g) {
+  const a = AC, out = a.createGain(), end = t + d + 0.4;
+  out.gain.setValueAtTime(0.0001, t); out.gain.linearRampToValueAtTime(g, t + 0.012);
+  out.gain.exponentialRampToValueAtTime(g * 0.35, t + Math.max(0.05, d)); out.gain.exponentialRampToValueAtTime(0.0001, end);
+  out.connect(bus);
+  for (const [mult, lvl, dec] of [[1, 1, 0], [2, 0.22, 0.5], [3.01, 0.07, 0.09]]) {
+    const o = a.createOscillator(), og = a.createGain();
+    o.type = 'sine'; o.frequency.value = f * mult;
+    og.gain.setValueAtTime(lvl, t); if (dec) og.gain.exponentialRampToValueAtTime(0.001, t + dec);
+    o.connect(og).connect(out); o.start(t); o.stop(end + 0.05);
+  }
+}
+function kick(bus, t) {
+  const a = AC, o = a.createOscillator(), gn = a.createGain();
+  o.type = 'sine'; o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+  gn.gain.setValueAtTime(0.22, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+  o.connect(gn).connect(bus); o.start(t); o.stop(t + 0.25);
+}
+function brush(bus, t) {
+  const a = AC, s = a.createBufferSource(), fl = a.createBiquadFilter(), gn = a.createGain();
+  s.buffer = NB; fl.type = 'bandpass'; fl.frequency.value = 2800; fl.Q.value = 0.6;
+  gn.gain.setValueAtTime(0.0001, t); gn.gain.linearRampToValueAtTime(0.045, t + 0.015); gn.gain.exponentialRampToValueAtTime(0.0005, t + 0.18);
+  s.connect(fl).connect(gn).connect(bus); s.start(t, Math.random() * 0.5); s.stop(t + 0.2);
+}
+function shaker(bus, t) {
+  const a = AC, s = a.createBufferSource(), fl = a.createBiquadFilter(), gn = a.createGain();
+  s.buffer = NB; fl.type = 'highpass'; fl.frequency.value = 6000;
+  gn.gain.setValueAtTime(0.02, t); gn.gain.exponentialRampToValueAtTime(0.0005, t + 0.06);
+  s.connect(fl).connect(gn).connect(bus); s.start(t, Math.random() * 0.5); s.stop(t + 0.08);
+}
+// player: one looping tune at a time, cross-faded when the screen changes; jingles play once over silence
+// mode: 'menus' plays on the title, Jerry's screens and the card; 'always' also plays (softer) while you shoot;
+// 'radio' is Jerry Radio, the old tunes one after another all the time, separate from the game's own songs
+const MUS = { mode: 'menus', cur: null, song: null, bus: null, t0: 0, idx: 0, loops: 0, hold: 0, vol: 1,
+  radioN: 0, radioNext: 0, radioOrder: null, np: null };
+try { const m = localStorage.getItem('jerrys5_music'); if (['off', 'menus', 'always', 'radio'].includes(m)) MUS.mode = m; } catch (e) {}
+let musOut = null;
+const MUSIC_LABEL = { off: 'OFF', menus: 'MENUS', always: 'ALWAYS', radio: 'RADIO' };
+function saveMusic() { try { localStorage.setItem('jerrys5_music', MUS.mode); } catch (e) {} }
+function toggleMusic() {
+  if (MUS.mode === 'menus' || MUS.mode === 'always') MUS.prev = MUS.mode;
+  MUS.mode = { off: 'menus', menus: 'always', always: 'radio', radio: 'off' }[MUS.mode];
+  saveMusic();
+}
+// in-game switch: game music, then Jerry Radio, then off, then back to the game music
+function musicOnOff() {
+  if (MUS.mode === 'menus' || MUS.mode === 'always') { MUS.prev = MUS.mode; MUS.mode = 'radio'; }
+  else if (MUS.mode === 'radio') MUS.mode = 'off';
+  else MUS.mode = MUS.prev || 'menus';
+  saveMusic();
+}
+function newBus(v, vol = 1) {
+  const a = AC;
+  if (!musOut) {
+    musOut = a.createGain(); musOut.gain.value = 0.9; musOut.connect(a.destination);
+    // a faint small-room sound so the instruments sit together: a short, dark, quiet tail, not an echo
+    const sr = a.sampleRate, n = Math.floor(sr * 0.7), ir = a.createBuffer(2, n, sr);
+    for (let c = 0; c < 2; c++) { const ch = ir.getChannelData(c); let lp = 0; for (let i = 0; i < n; i++) { lp = lp * 0.6 + (Math.random() * 2 - 1) * 0.4; ch[i] = lp * Math.exp(-i / (sr * 0.12)); } }
+    const room = a.createConvolver(), wet = a.createGain();
+    room.buffer = ir; wet.gain.value = 0.14;
+    musOut.connect(room).connect(wet).connect(a.destination);
+  }
+  const bus = a.createGain();
+  bus.gain.setValueAtTime(0.0001, a.currentTime); bus.gain.linearRampToValueAtTime(vol, a.currentTime + 0.8);
+  bus.connect(musOut);
+  if (v.echo) {   // mountain air: a soft echo off the slopes
+    const dl = a.createDelay(1), fb = a.createGain(), wet = a.createGain();
+    dl.delayTime.value = 0.36; fb.gain.value = 0.32; wet.gain.value = 0.35;
+    bus.connect(dl); dl.connect(fb).connect(dl); dl.connect(wet).connect(musOut);
+  }
+  return bus;
+}
+function fadeBus(bus) {
+  if (!bus) return;
+  const t = AC.currentTime;
+  bus.gain.cancelScheduledValues(t); bus.gain.setValueAtTime(bus.gain.value, t); bus.gain.linearRampToValueAtTime(0.0001, t + 0.6);
+  setTimeout(() => bus.disconnect(), 2500);
+}
+function startSong(name, arr, vol = 1) {
+  const song = compileTune(TUNES[name], ARRANGE[arr]);
+  for (const e of song.ev) if (e.i in MIX) pluckBuffer(e.m, e.i);   // build the strings up front
+  return { song, bus: newBus(song.v, vol), t0: AC.currentTime + 0.1, idx: 0, loops: 0, vol };
+}
+// skip ahead on Jerry Radio (the music tick fades this song out and starts the next)
+function nextSong() { if (MUS.mode === 'radio') MUS.radioN++; }
+// stay on the song you like: it plays over and over until loop is turned off (skipping moves on and loops the next one)
+function toggleLoop() { if (MUS.mode !== 'radio') return; MUS.repeat = !MUS.repeat; if (MUS.np) MUS.np.at = time; }
+function startRadio(n, vol) {
+  if (!MUS.radioOrder) MUS.radioOrder = RADIO.map((_, i) => i).sort(() => Math.random() - 0.5);   // shuffled once per visit
+  const i = MUS.radioOrder[n % RADIO.length], song = radioSong(i);
+  for (const e of song.ev) if (e.i in MIX) pluckBuffer(e.m, e.i);
+  MUS.np = { title: RADIO[i].title, at: time };
+  return { song, bus: newBus(song.v, vol), t0: AC.currentTime + 0.1, idx: 0, loops: 0, vol };
+}
+function playJingle(name) {
+  if (!AC || MUS.mode === 'off' || MUS.mode === 'radio' || muted) return false;   // the radio keeps playing instead
+  fadeBus(MUS.bus); MUS.bus = null; MUS.song = null; MUS.cur = null;
+  const j = startSong(name, name); MUS.jingle = j.bus;
+  for (const e of j.song.ev) playEv(j.bus, e, j.t0 + e.t * j.song.spb, j.song);
+  MUS.hold = j.t0 + j.song.len * j.song.spb + 1.5;
+  setTimeout(() => j.bus.disconnect(), (MUS.hold - AC.currentTime + 1) * 1000);
+  return true;
+}
+// mix levels for the backing instruments
+const MIX = { harp: 0.13, bass: 0.13, gtr: 0.07, banjo: 0.11 };  // balanced by measured loudness, melody about twice the backing
+const LEADS = { keys, ocarina, fiddle, harmonica };
+// played by a person, not a machine: downbeats leaned on, offbeats lighter, every note a hair
+// early or late and a touch louder or softer
+function feel(e, song, lead) {
+  const pos = ((e.t % song.M) + song.M) % song.M, down = pos < 0.01, onBeat = Math.abs(pos - Math.round(pos)) < 0.01;
+  const accent = lead ? (down ? 1.06 : 1) : down ? 1.15 : onBeat ? 0.95 : 0.8;
+  return { g: accent * (1 + (Math.random() - 0.5) * (lead ? 0.08 : 0.2)), dt: (Math.random() - 0.5) * (lead ? 0.008 : 0.018) };
+}
+function playEv(bus, e, t, song) {
+  const d = e.d * song.spb, lead = e.i === 'lead' || e.i === 'lead2', f = feel(e, song, lead);
+  t = Math.max(AC.currentTime, t + f.dt);
+  if (e.i === 'lead') LEADS[song.v.leadInst || 'ocarina'](bus, t, hz(e.m), d, (song.v.lead || 0.07) * f.g);
+  else if (e.i === 'lead2') keys(bus, t, hz(e.m), d, (song.v.lead || 0.07) * 0.55 * f.g);
+  else if (e.i === 'kick') kick(bus, t);
+  else if (e.i === 'brush') brush(bus, t);
+  else if (e.i in MIX) pluck(bus, t, e.m, e.i, MIX[e.i] * f.g);
+  else shaker(bus, t);
+}
+// what should be playing right now: the backdrop's tune on the title, Jerry's theme when he's
+// talking or on the final card, and while you shoot either nothing or (on 'always') the backdrop's
+// tune turned down so the trap and the shot still come through
+const SHOOTING = ['ready', 'flight', 'reload', 'walk'];
+function musicWant() {
+  if (MUS.mode === 'off' || muted) return null;
+  if (MUS.mode === 'radio') {   // one song after another, with a short pause between
+    if (!MUS.song && MUS.cur && MUS.cur.startsWith('radio') && AC.currentTime >= MUS.radioNext) MUS.radioN++;
+    return 'radio:' + MUS.radioN;
+  }
+  if (AC.currentTime < MUS.hold && game.state === 'summary') return null;
+  if (game.state === 'talk' || game.state === 'summary') return 'jerry';
+  if (game.state === 'title' || (MUS.mode === 'always' && SHOOTING.includes(game.state))) return 'scene:' + SCN.id;
+  return null;
+}
+function musicTick() {
+  if (!AC) return;
+  if (MUS.jingle && (muted || MUS.mode === 'off')) { fadeBus(MUS.jingle); MUS.jingle = null; MUS.hold = 0; }
+  const want = musicWant(), vol = SHOOTING.includes(game.state) ? 0.4 : 1;
+  if (want !== MUS.cur) {
+    fadeBus(MUS.bus); MUS.bus = null; MUS.song = null; MUS.cur = want;
+    if (want) Object.assign(MUS, want === 'jerry' ? startSong('jerry', 'jerry') : want.startsWith('radio') ? startRadio(MUS.radioN, vol) : startSong(SCENE_TUNE[SCN.id], SCN.id, vol));
+  } else if (MUS.bus && MUS.vol !== vol) {   // same tune, just turned up or down (title to range and back)
+    const t = AC.currentTime;
+    MUS.bus.gain.cancelScheduledValues(t); MUS.bus.gain.setValueAtTime(MUS.bus.gain.value, t); MUS.bus.gain.linearRampToValueAtTime(vol, t + 0.6);
+    MUS.vol = vol;
+  }
+  const s = MUS.song; if (!s) return;
+  const horizon = AC.currentTime + 0.4;
+  for (;;) {
+    const e = s.ev[MUS.idx], t = MUS.t0 + (MUS.loops * s.len + e.t) * s.spb;
+    if (t > horizon) break;
+    if (t > AC.currentTime - 0.05) playEv(MUS.bus, e, t, s);
+    if (++MUS.idx >= s.ev.length) {
+      if (s.v.once && MUS.repeat) { MUS.idx = 0; MUS.loops++; MUS.t0 += 1.5; continue; }   // looping: same song again after a breath
+      if (s.v.once) { MUS.radioNext = MUS.t0 + s.len * s.spb + 1.5; MUS.song = null; break; }   // radio song over: the next one follows
+      MUS.idx = 0; MUS.loops++;
+    }
+  }
+}
 
 // ---- leaderboard (full choke only) --------------------------
 const LB_KEY = 'fivestand_clays_lb_v1';
@@ -255,7 +856,7 @@ const SCENES = [
     hill, hillCol: ['#6c98a8', '#82adbb'], trees,
     pine: [['#173a22', '#21502d'], ['#1c4428', '#285c33']], leaf: [['#22512a', '#2e6a34'], ['#2a5c2e', '#367a3a']],
     field: ['#4ea53a', '#56ae41', '#2f6b2a'], specks: ['#3d8a2e', '#62b84a'], flowers: true, tuft: ['#3d8a2e', '#79c95a'] },
-  { id: 'shasta', name: 'MT SHASTA',
+  { id: 'shasta', name: 'MT. SHASTA',
     sky: ['#1c3a88', '#224496', '#2a51a4', '#3461b2', '#4174c0', '#5289cc', '#679fd8', '#82b6e2', '#a2cdee'], sun: [70, 30],
     hill: xw => 0.8 * hill(xw) + 4, hillCol: ['#3f6a64', '#557f74'], shasta: true,
     trees: treeline(4300, (r, o) => { for (let x = -170; x < 170; x += 1.1 + r() * 1.6) o.push({ x, z: 84 + r() * 18, h: 10 + r() * 9, pine: true, v: r() }); }),
@@ -312,7 +913,7 @@ function newRound() {
   game.results = Array.from({ length: 5 }, () => Array(5).fill(null));
   game.station = 0; game.pres = 0; game.camX = STATION_X[0];
   game.menus = game.random ? randomMenus() : MENUS;
-  game.lbEntry = null; game.lbId = null; game.final = null; game.assisted = game.leadAid;
+  game.lbEntry = null; game.lbId = null; game.final = null; game.assisted = game.leadAid; game.misses = [];
   game.easyRound = game.easy; setEasy(game.easy);
   game.look = 0; game.talk = null; game.sum = null;
   say('STATION 1', C_YEL, 1.4, 3);
@@ -321,6 +922,8 @@ function newRound() {
 function toTitle() {
   resetField(); game.state = 'title'; game.camX = 0; game.cur = null; game.demoT = 0.5; game.showCard = false; game.quitArmedUntil = 0;
   game.look = 0; game.talk = null; game.sum = null; jerry.clip = null;
+  game.menu = null; TJ.say = null; TJ.punch = null; TJ.next = time + 1.5; TJ.lastInput = time;
+  if (TJ.rest) wakeUp(true);
 }
 function startPres() {
   game.shells = 2;   // two shells every time: a second try at the single, one each on pairs
@@ -350,9 +953,14 @@ function talkClick() {
   if (tk.kind === 'help') { if (tk.topic !== null) helpSay(null, HELP_AGAIN); return; }   // help stays open until Exit
   endTalk();
 }
-function endTalk() { const tk = game.talk; if (!tk || tk.phase === 'out') return; tk.phase = 'out'; tk.t = 0; jerry.clip = null; }
+function endTalk() {
+  const tk = game.talk; if (!tk || tk.phase === 'out') return;
+  tk.t = tk.phase === 'in' ? Math.max(0, 0.5 - tk.t) : 0;   // mid-pan: turn back from where the camera is
+  tk.phase = 'out'; jerry.clip = null;
+}
 function openHelp() {
   if (game.state !== 'title' && game.state !== 'ready') return;
+  game.menu = null; TJ.say = null;
   startTalk('help', [HELP_HELLO], CLIPS.hello, ret => { game.state = ret; });
   game.talk.topic = null;
 }
@@ -438,6 +1046,7 @@ function dust(x, y, z, n, col) {
 
 // ---- shooting -----------------------------------------------
 function fire() {
+  if (game.cur && !game.cur.clays.length) return;   // the bird isn't out yet: a click now doesn't waste a shell
   if (game.shells <= 0) { SFX.click(); return; }
   game.shells--;
   SFX.shot();
@@ -455,7 +1064,9 @@ function fire() {
     const p = (c.x - ox) * dx + (c.y - oy) * dy + (c.z - oz) * dz;
     if (p > 0 && p < SHOT_MAX && (nearest === null || p < reveal)) { reveal = p; nearest = c; }
   }
-  shots.push({ ox, oy, oz, dx, dy, dz, psx, psy, core: ch.core, t: 0, s: 0, elig, checked: new Set(), reveal, nearest, fx: false, done: false });
+  let target = null, ta = 1e9;   // the bird this shot was meant for: the one closest to the line of fire
+  for (const c of elig) { const rx = c.x - ox, ry = c.y - oy, rz = c.z - oz, p = rx * dx + ry * dy + rz * dz; if (p <= 0) continue; const a = Math.hypot(rx - p * dx, ry - p * dy, rz - p * dz) / p; if (a < ta) { ta = a; target = c; } }
+  shots.push({ ox, oy, oz, dx, dy, dz, psx, psy, core: ch.core, t: 0, s: 0, elig, checked: new Set(), reveal, nearest, target, fx: false, done: false });
   const cur = game.cur;
   if (cur && cur.def.type === 'report' && !cur.second && cur.clays.length) {
     cur.second = true; cur.sched.push({ t: 0.04, trap: cur.def.traps[1], k: 1 }); // second bird released on the report
@@ -472,12 +1083,40 @@ function stepShot(sh, dt) {
       sh.checked.add(c);
       if (p > 0 && p <= SHOT_MAX) {
         const perp = Math.hypot(rx - p * sh.dx, ry - p * sh.dy, rz - p * sh.dz);
-        if (perp <= CLAY_R + sh.core * p) breakClay(c);
+        if (perp <= CLAY_R + sh.core * p) breakClay(c); else noteMiss(c, sh, rx, ry, rz, p);
       }
     }
   }
   if (!sh.fx && sh.s >= sh.reveal) { sh.fx = true; makePatternFx(sh); }
-  if (sh.s > SHOT_MAX) sh.done = true;
+  if (sh.s > SHOT_MAX) {
+    // birds the shot was pointed at but never reached: they were already out of range
+    for (const c of sh.elig) {
+      if (c.state === 'broken' || sh.checked.has(c) || c !== sh.target) continue;
+      const rx = c.x - sh.ox, ry = c.y - sh.oy, rz = c.z - sh.oz, p = rx * sh.dx + ry * sh.dy + rz * sh.dz;
+      if (p > 0 && Math.hypot(rx - p * sh.dx, ry - p * sh.dy, rz - p * sh.dz) / p < 0.12 && (!c.miss || c.miss.wide)) c.miss = { far: true, gap: 1e9 };
+    }
+    sh.done = true;
+  }
+}
+// ---- what went wrong on a miss: where the pattern was, measured against the clay's line of flight.
+//      Kept per clay (the closest attempt wins) so Jerry can say something that fits the shot.
+function noteMiss(c, sh, rx, ry, rz, p) {
+  const ox = rx - p * sh.dx, oy = ry - p * sh.dy, oz = rz - p * sh.dz;            // clay relative to the centre of the pattern
+  const off = Math.hypot(ox, oy, oz), gap = off - (CLAY_R + sh.core * p);
+  if (c !== sh.target || off / p > 0.12) { if (!c.miss) c.miss = { wide: true, gap: 1e9 }; return; }   // that shot wasn't for this bird
+  const vd = c.vx * sh.dx + c.vy * sh.dy + c.vz * sh.dz;                         // the clay's motion across the line of fire
+  let vx = c.vx - vd * sh.dx, vy = c.vy - vd * sh.dy, vz = c.vz - vd * sh.dz;
+  const vl = Math.hypot(vx, vy, vz) || 1; vx /= vl; vy /= vl; vz /= vl;
+  const along = ox * vx + oy * vy + oz * vz;                                     // + : clay ahead of the pattern, so the shot was behind
+  const vert = oy - along * vy;                                                  // + : clay above the pattern, so the shot was low
+  if (!c.miss || c.miss.gap > gap) c.miss = { along, vert, gap, far: p > 45 };
+}
+function missKind(c) {
+  const m = c.miss;
+  if (!m || m.wide) return 'noshot';
+  if (m.far) return 'far';
+  if (Math.abs(m.along) >= Math.abs(m.vert)) return m.along > 0 ? 'behind' : 'ahead';
+  return m.vert > 0 ? 'low' : 'high';
 }
 function makePatternFx(sh) {
   const r = sh.core * F;
@@ -499,6 +1138,7 @@ function pull() {
   if (def.type === 'true') { cur.sched.push({ t: d, trap: def.traps[0], k: 0 }, { t: d + Math.random() * 0.03, trap: def.traps[1], k: 1 }); cur.second = true; }
   else cur.sched.push({ t: d, trap: def.traps[0], k: 0 });
   game.cur = cur; game.state = 'flight';
+  if (game.leadAid) game.assisted = true;   // a bird called with the lead marker on
 }
 function updateFlight(dt) {
   const cur = game.cur;
@@ -516,7 +1156,10 @@ function updateFlight(dt) {
 function finishPres() {
   const cur = game.cur;
   const hits = cur.clays.slice().sort((a, b) => a.idx - b.idx).map(c => c.state === 'broken');
-  cur.clays.forEach(c => { game.results[game.station][c.idx] = c.state === 'broken'; });
+  cur.clays.forEach(c => {
+    game.results[game.station][c.idx] = c.state === 'broken';
+    if (c.state !== 'broken') game.misses.push({ station: game.station, trap: c.trap, kind: missKind(c) });
+  });
   if (hits.some(h => h)) game.bounceT = time;   // the score counter hops when points go up
   if (hits.length === 1) say(hits[0] ? 'DEAD!' : 'LOST', hits[0] ? C_GRN : C_RED);
   else if (hits[0] && hits[1]) { say('PAIR!', C_GRN); SFX.pair(); }
@@ -527,8 +1170,12 @@ function nextAfterReload() {
   game.pres++;
   if (game.pres < 3) { startPres(); return; }
   // stand finished: Jerry has a word, then on to the next station (or the card)
-  const sc = stationScore(game.station), key = sc === 5 ? 'five' : sc >= 3 ? 'good' : 'rough';
-  startTalk('stand', [pickLine(STAND_LINES, key)], sc >= 3 ? CLIPS.good : CLIPS.rough,
+  const sc = stationScore(game.station), key = sc === 5 ? 'five' : sc === 4 ? 'four' : sc === 3 ? 'three' : 'rough';
+  // praise for a clean stand; otherwise how it went plus a tip that fits the birds that got away
+  const missed = game.misses.filter(m => m.station === game.station);
+  let line = pickLine(STAND_LINES, key);
+  if (missed.length) line += ' ' + missTip(missed);
+  startTalk('stand', [line], sc >= 3 ? CLIPS.good : CLIPS.rough,
     () => { if (game.station < 4) startWalk(); else endRound(); });
 }
 function endRound() {
@@ -539,12 +1186,15 @@ function endRound() {
   game.final = { s, singles, report, tru, date: new Date().toISOString().slice(0, 10) };
   game.state = 'summary';
   game.lbEntry = (game.choke === 'full' && !game.assisted && !game.easyRound && s > 0 && lbQualifies(s)) ? { name: '' } : null;
-  const key = s >= 23 ? 'top' : s >= 18 ? 'good' : s >= 12 ? 'mid' : 'low';
-  const lines = wrap(pickLine(FINAL_LINES, key), 23);
+  const key = s === 25 ? 'perfect' : s >= 23 ? 'top' : s >= 18 ? 'good' : s >= 12 ? 'mid' : 'low';
+  let closing = pickLine(FINAL_LINES, key);
+  const main = game.misses.length ? mainMiss(game.misses) : null;   // what to work on, if most misses went the same way
+  if (main && main.count >= 2 && s < 25) closing += ' ' + FINAL_TIP[main.kind];
+  const lines = wrap(closing, 23);
   game.sum = { lines, len: linesLen(lines), chars: 0 };
   jerry.clip = null;
   playClip(s === 25 ? CLIPS.clean : s >= 20 ? CLIPS.clap : s >= 12 ? CLIPS.good : CLIPS.rough);
-  SFX.fanfare();
+  if (!playJingle(s === 25 ? 'perfect' : s >= 12 ? 'good' : 'rough')) SFX.fanfare();
 }
 function saveInitials() {
   if (!game.lbEntry) return;
@@ -587,11 +1237,6 @@ function update(dt) {
   }
   for (const b of birds) { b.x += b.vx * dt; b.y += Math.sin(time * 1.3 + b.ph) * dt * 2; }
   birds = birds.filter(b => b.x > -60 && b.x < W + 60);
-  // Jerry fidgets in his chair while you shoot; purely for looks, never waits on anything
-  if (['ready', 'flight', 'reload', 'walk'].includes(game.state) && !jerry.clip && time > jerry.idleAt) {
-    playClip(Math.random() < 0.5 ? CLIPS.glasses : CLIPS.shift);
-    jerry.idleAt = time + 7 + Math.random() * 9;
-  }
 
   switch (game.state) {
     case 'talk': updateTalk(dt); break;
@@ -601,7 +1246,12 @@ function update(dt) {
       break;
     case 'title':
       game.demoT -= dt;
-      if (game.demoT <= 0) { const ids = 'ABCDEF'; launchClay(ids[Math.floor(Math.random() * 6)], -1, true); game.demoT = 1.1 + Math.random() * 1.3; }
+      if (game.demoT <= 0) {
+        const ids = 'ABCDEF', c = launchClay(ids[Math.floor(Math.random() * 6)], -1, true);
+        game.demoT = 1.1 + Math.random() * 1.3;
+        if (Math.random() < 0.2) dogPoint(c);   // now and then the dog points the bird
+      }
+      titleJerry(dt);
       break;
     case 'flight': updateFlight(dt); break;
     case 'reload': game.timer -= dt; if (game.timer <= 0) nextAfterReload(); break;
@@ -943,8 +1593,10 @@ function drawGun() {
   }
   for (const s of smokes) { ctx.globalAlpha = clamp(s.life, 0, 1) * 0.35; pEllipse(s.x, s.y, s.r, s.r, '#d8d8d8'); }
   ctx.globalAlpha = 1;
-  // crosshair: open centre so the clay stays visible, with a dot at the exact aim point
-  const ky = cy - recoil * 3;
+}
+// crosshair: open centre so the clay stays visible, with a dot at the exact aim point (drawn last, over the HUD)
+function drawCrosshair() {
+  const cx = mouse.x, ky = mouse.y - recoil * 3;
   const arm = (x, y, w, h) => { R(x - 1, y - 1, w + 2, h + 2, 'rgba(10,14,30,0.6)'); R(x, y, w, h, '#ffffff'); };
   arm(cx - 10, ky, 6, 1); arm(cx + 5, ky, 6, 1); arm(cx, ky - 10, 1, 6); arm(cx, ky + 5, 1, 6);
   R(cx - 0.5, ky - 0.5, 1, 1, '#ff3a2a');
@@ -1023,7 +1675,11 @@ function drawHUD() {
   button(166, 255, 36, 13, 'CARD', () => { game.showCard = !game.showCard; }, { on: game.showCard });
   if (canFullscreen) button(206, 255, 26, 13, isFullscreen() ? '><' : '<>', toggleFullscreen);
   button(canFullscreen ? 236 : 206, 255, 32, 13, 'HELP', openHelp, { disabled: game.state !== 'ready' });
-  text(`STATION ${game.station + 1}`, W / 2 + 90, 259, '#f3d9a8', 1, 'center', '#3e2614');
+  button(canFullscreen ? 272 : 242, 255, 36, 13, MUS.mode === 'radio' ? 'RADIO' : 'MUSIC', musicOnOff, { on: MUS.mode !== 'off' });
+  if (MUS.mode === 'radio') {   // skip to the next radio song, or keep this one going
+    button(canFullscreen ? 312 : 282, 255, 20, 13, '>>', nextSong);
+    button(canFullscreen ? 336 : 306, 255, 28, 13, 'LOOP', toggleLoop, { on: MUS.repeat });
+  } else text(`STATION ${game.station + 1}`, W / 2 + 132, 259, '#f3d9a8', 1, 'center', '#3e2614');
   text(CHOKES[game.choke].short + ' CHOKE', W - 46, 259, '#f3d9a8', 1, 'right', '#3e2614');
   const total = game.state === 'ready' || game.state === 'flight' ? 2 : 0;
   for (let i = 0; i < 2; i++) {
@@ -1033,7 +1689,7 @@ function drawHUD() {
   }
   if (game.state === 'reload') text('RELOADING...', W / 2, 120, '#c8d4ea', 1, 'center');
   if (game.state === 'walk') text(`MOVING TO STATION ${game.station + 2}...`, W / 2, 120, C_WHT, 1, 'center');
-  text('TAB: CARD  M: SOUND  L: LEAD  F: FULL SCREEN  H: HELP  ESC: QUIT', 4, H - 24, '#c9d4ea', 1, 'left');
+  text(`TAB: CARD  M: SOUND  N: MUSIC  ${MUS.mode === 'radio' ? 'S: SKIP  R: LOOP  ' : ''}L: LEAD  F: FULL  H: HELP  ESC: QUIT`, 4, H - 24, '#c9d4ea', 1, 'left');
   if (game.leadAid) text('LEAD MARKER ON - NOT RANKED', W - 4, H - 24, '#5ff2ff', 1, 'right');
 }
 function drawMsgs() {
@@ -1245,12 +1901,19 @@ function stripArm(rows, side) {
   });
 }
 const BODY_CACHE = {};
-function jerryBody(seated, noR, noL) {
-  const k = [seated, noR, noL].join();
+// walking: one lower leg and boot lifted two rows (step 1 his right, step 2 his left)
+function stepRows(rows, f) {
+  const [c0, c1] = f === 1 ? [7, 11] : [12, 16], out = rows.map(r => r.split(''));
+  for (let y = 20; y < rows.length; y++) for (let x = c0; x <= c1; x++) out[y][x] = y + 2 < rows.length ? rows[y + 2][x] : '.';
+  return out.map(a => a.join(''));
+}
+function jerryBody(seated, noR, noL, step = 0) {
+  const k = [seated, noR, noL, step].join();
   if (!BODY_CACHE[k]) {
     let rows = seated ? GRANDPA_BODY.slice(0, 17).concat(SEAT_LEGS) : GRANDPA_BODY;
     if (noR) rows = stripArm(rows, 'R');
     if (noL) rows = stripArm(rows, 'L');
+    if (step) rows = stepRows(rows, step);
     BODY_CACHE[k] = rows;
   }
   return BODY_CACHE[k];
@@ -1270,6 +1933,9 @@ const ARMS = {
   clapIn:   { pts: [[7, 1], [6, 9], [10, 5]] },
   glasses1: { pts: [[7, 1], [0, -1], [3, -11]] },
   glasses2: { pts: [[7, 1], [0, -1], [3, -13]] },
+  pet1:     { pts: [[7, 1], [3, 7], [0, 13]] },    // reaching down beside him to the dog's head
+  pet2:     { pts: [[7, 1], [3, 7], [0, 11]] },
+  read:     { pts: [[7, 1], [5, 8], [9, 6]] },    // both hands up holding a book in front of his chest
 };
 const ARMS_L = {};
 for (const k in ARMS) ARMS_L[k] = { pts: ARMS[k].pts.map(([x, y]) => [22 - x, y]), hand: ARMS[k].hand, m: true };
@@ -1317,16 +1983,49 @@ function drawChair(bx, by, front) {
 }
 // k: { r, l: arm poses (null = resting), hy: head drop px, fx: head turn, dx: lean px, blink }
 function drawJerry(bx, by, seated, k) {
-  const lean = k.dx || 0;
+  const lean = k.dx || 0, chair = k.chair === 'recliner' ? drawRecliner : drawChair;
   bx = Math.round(bx); by = Math.round(by);
-  if (seated) drawChair(bx, by, false);
-  drawSprite(jerryBody(seated, !!k.r, !!k.l), GRANDPA_PAL, bx + lean, by, 3);
-  if (seated) drawChair(bx, by, true);
+  if (seated) chair(bx, by, false);
+  drawSprite(jerryBody(seated, !!k.r, !!k.l, k.step || 0), GRANDPA_PAL, bx + lean, by, 3);
+  if (seated) chair(bx, by, true);
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(grandpaHead(k.fx || 0, !!k.blink), 0, 0, 48, GRANDPA_NECK_ROWS,
     bx + lean - 12, by + 3 - GRANDPA_NECK_ROWS * 2 + (k.hy || 0), 96, GRANDPA_NECK_ROWS * 2);
+  if (k.book) drawBook(bx + lean, by, k.book);
   if (k.r) drawArm(bx + lean, by, ARMS[k.r]);
   if (k.l) drawArm(bx + lean, by, ARMS_L[k.l]);
+}
+// his reading chair: a plump brown leather recliner, front view; back and seat behind him, arms in front
+function drawRecliner(bx, by, front) {
+  const O = '#22140a', L = '#7a4a2a', Lh = '#9a6440', Ld = '#4e2e18';
+  const pad = (x, y, w, h, c = L) => { R(bx + x + 2, by + y, w - 4, h, O); R(bx + x, by + y + 2, w, h - 4, O); R(bx + x + 2, by + y + 1, w - 4, h - 2, c); R(bx + x + 1, by + y + 2, w - 2, h - 4, c); };
+  if (!front) {
+    pad(-16, -50, 104, 104); R(bx - 12, by - 47, 96, 3, Lh);                            // tall padded back
+    for (const [x, y] of [[4, -30], [36, -30], [68, -30], [20, -6], [52, -6]]) R(bx + x, by + y, 2, 2, Ld);   // button tufts
+    pad(2, 46, 68, 20, Ld); R(bx + 4, by + 48, 64, 2, L);                                 // seat cushion front
+    pad(-26, 62, 124, 16, Ld);                                                          // skirt
+    R(bx - 22, by + 78, 6, 4, O); R(bx + 88, by + 78, 6, 4, O);                         // little feet
+    return;
+  }
+  for (const x of [-26, 68]) { pad(x, 12, 30, 58); R(bx + x + 3, by + 15, 24, 5, Lh); R(bx + x + 3, by + 22, 24, 2, Ld); }   // rolled arms
+  R(bx + 98, by + 36, 2, 18, O); R(bx + 97, by + 34, 4, 4, '#c8a050');                  // the recline lever
+}
+// the book: held up to read (a page turns now and then), or dropped onto his lap when he nods off
+function drawBook(bx, by, how) {
+  const O = '#22140a', C = '#8a2a20', Ch = '#b04030', P = '#f4ead0';
+  if (how === 'hold') {
+    R(bx + 26, by + 5, 20, 20, O); R(bx + 27, by + 6, 18, 18, C); R(bx + 27, by + 6, 18, 2, Ch); R(bx + 35, by + 6, 2, 18, '#5a1810');
+    if (time % 6 < 0.3) R(bx + 37, by + 4, 8, 2, P);   // a page flipping over the top
+  } else { R(bx + 24, by + 40, 24, 8, O); R(bx + 25, by + 41, 22, 6, C); R(bx + 25, by + 41, 22, 2, P); }
+}
+// drifting Z's over someone asleep
+function drawZs(x, y, big) {
+  for (let i = 0; i < 3; i++) {
+    const ph = (time * 0.45 + i / 3) % 1;
+    ctx.globalAlpha = ph < 0.8 ? 1 : (1 - ph) * 5;
+    text('Z', x + ph * 16, y - ph * 28, '#e8eef8', big && ph > 0.5 ? 2 : 1, 'center');
+  }
+  ctx.globalAlpha = 1;
 }
 // animation clips: keyframes held for d seconds, at a deliberately low frame rate
 const rep = (n, a) => Array.from({ length: n }, () => a).flat();
@@ -1340,6 +2039,340 @@ const CLIPS = {
   clean:   [...rep(4, [{ d: 0.22, r: 'pumpUp', l: 'pumpUp' }, { d: 0.22, r: 'pumpDn', l: 'pumpDn' }]), ...rep(4, [{ d: 0.25, r: 'wave1' }, { d: 0.25, r: 'wave2' }]), { d: 0.5, r: 'wave1' }],
   clap:    rep(5, [{ d: 0.55, r: 'clapOut', l: 'clapOut' }, { d: 0.25, r: 'clapIn', l: 'clapIn', snd: 'clap' }]),
 };
+// a few more for the title screen, where he's standing around with time on his hands
+Object.assign(CLIPS, {
+  wave:  [...rep(3, [{ d: 0.25, r: 'wave1' }, { d: 0.25, r: 'wave2' }]), { d: 0.3 }],
+  look:  [{ d: 0.8, fx: -2 }, { d: 0.4 }, { d: 0.8, fx: 2 }, { d: 0.4 }],
+  clap3: rep(3, [{ d: 0.45, r: 'clapOut', l: 'clapOut' }, { d: 0.22, r: 'clapIn', l: 'clapIn', snd: 'clap' }]),
+  pump2: [...rep(2, [{ d: 0.22, r: 'pumpUp', l: 'pumpUp' }, { d: 0.22, r: 'pumpDn', l: 'pumpDn' }]), { d: 0.3 }],
+});
+const TITLE_ANTICS = ['wave', 'look', 'glasses', 'good', 'clap3', 'pump2', 'rough', 'hello', 'look', 'glasses'];
+// title screen talk is just friendly; the shooting advice stays with him out on the range
+const TITLE_CHAT = [
+  "Well, howdy! Glad you stopped by.", "Pull up a chair and stay a while.", "Good to see you!", "Look who it is! Come on in.",
+  "Beautiful day to break some clays.", "Make yourself at home.", "Coffee's on if you want some.", "Pull up and shoot a round with me!",
+  "Need a hand? Hit Help and I'll walk you through it.", "Sure is nice having company.",
+];
+// and a few jokes, setup first, then the punchline a moment later
+const JOKES = [
+  ["What do you call a dog that does magic?", "A labracadabrador!"],
+  ["Why'd the scarecrow win an award?", "He was outstanding in his field."],
+  ["What's a bird dog's favorite pizza?", "Pupperoni!"],
+  ["Why are clay pigeons bad at hide and seek?", "They always get busted."],
+  ["I only know 25 letters of the alphabet.", "I don't know Y."],
+  ["Why do birds fly south for the winter?", "It's faster than walking."],
+  ["How do you catch a squirrel?", "Climb a tree and act like a nut."],
+  ["What do you call a fish with no eyes?", "A fsh."],
+  ["I used to hate facial hair.", "Then it grew on me."],
+  ["What did the clay say to the shotgun?", "I'm going to pieces over you."],
+  ["Why don't skeletons go shooting?", "They don't have the guts."],
+  ["I told the doctor I broke my arm in two places.", "He said quit going to those places."],
+];
+const SCENE_CHAT = { shasta: "Look at that mountain. Never gets old.", desert: "Dry out here. Bring water.", plains: "You can see for miles out here.", classic: "Good old home range." };
+const DOG_CHAT = ["Good girl.", "Who's a good girl?", "This one's got a nose on her.", "Best bird dog I ever had."];   // she's a female
+CLIPS.pet = rep(5, [{ d: 0.3, l: 'pet1' }, { d: 0.3, l: 'pet2' }]);
+
+// ---- the dog: a liver-and-white English pointer, drawn cartoon-style with smooth curves rather than
+//      blocky pixels. Every part is outlined once around the outside (all outlines first, then all the
+//      fills), so the silhouette reads cleanly. Faces right in its own 118x76 box, ground at y = 74.
+const DOG_BOX = 118, DOG_GROUND = 74;
+const DC = { o: '#2b1a10', W: '#f7f2ea', sh: '#e2d8c8', far: '#c3b8a6', L: '#7b3f22', Ld: '#5a2c16', Lh: '#9a5530', N: '#2a1610', P: '#e07a80', E: '#1a0e08' };
+const DOG_O = 2;   // outline thickness (one solid pixel once she's pixelated)
+// leg skeletons: hip/shoulder, stifle/elbow, hock/wrist, paw
+const V_HIND = [[34, 36], [43, 51], [27, 59], [29, 71]], V_FORE = [[74, 38], [72, 50], [73, 66], [74, 71]];
+const V_HW = [14, 7, 5], V_FW = [8, 5, 4.5];
+function vStep(base, ph, stride, lift) {
+  const sw = Math.sin(ph * Math.PI * 2), up = Math.max(0, Math.cos(ph * Math.PI * 2)) * lift;
+  return base.map(([x, y], i) => i === 0 ? [x, y] : [x + sw * stride * (i / 3), y - (i === 3 ? up : i === 2 ? up * 0.6 : 0)]);
+}
+function dogPoseV(d) {
+  const P = { oy: 0, neck: [[80, 31], [87, 21], [91, 14]], head: [93, 12, -0.08], tail: -0.15, wag: 0, bark: false, sleep: false, lie: false,
+    nh: V_HIND, fh: V_HIND, nf: V_FORE, ff: V_FORE, hA: [0, 0], hL: [0, 0] };
+  const t = time;
+  if (d.state === 'walk' || d.state === 'run') {
+    const run = d.state === 'run', ph = (t * (run ? 2.6 : 1.5)) % 1, st = run ? 10 : 6, li = run ? 5 : 3;
+    P.ff = vStep(V_FORE, ph, st, li); P.nf = vStep(V_FORE, ph + 0.5, st, li);
+    const swing = q => -Math.sin(q * Math.PI * 2) * (run ? 0.42 : 0.26), lift = q => Math.max(0, Math.cos(q * Math.PI * 2)) * li;
+    P.hA = [swing(ph), swing(ph + 0.5)]; P.hL = [lift(ph), lift(ph + 0.5)];
+    P.oy = run ? Math.sin(ph * Math.PI * 4) * 1.2 : Math.sin(ph * Math.PI * 4) * 0.5;
+    P.wag = Math.sin(t * 9) * 0.25; if (run) P.tail = 0.05;
+  } else if (d.state === 'point') {   // frozen on point: near forefoot tucked up, tail straight out, nose level
+    P.nf = [[74, 38], [73, 48], [80, 54], [77, 59]]; P.tail = 0.1; P.neck = [[80, 31], [88, 22], [94, 18]]; P.head = [96, 17, 0.06];
+  } else if (d.state === 'sniff') {
+    P.neck = [[80, 32], [90, 42], [95, 52]]; P.head = [97, 55, 1.05]; P.wag = Math.sin(t * 5) * 0.2;
+  } else if (d.state === 'bark') {
+    P.bark = Math.floor(t * 6) % 2 === 0; P.head = [93, 11, -0.3]; P.wag = Math.sin(t * 9) * 0.2;
+  } else if (d.state === 'lie') {
+    P.lie = true; P.sleep = !!d.sleep; P.oy = 19; P.tail = -0.55;
+    P.nf = [[74, 57], [80, 67], [92, 69.5], [98, 70.5]]; P.ff = [[70, 56], [76, 65], [87, 67.5], [93, 68.5]];
+    if (P.sleep) { P.neck = [[80, 50], [88, 57], [93, 62]]; P.head = [97, 63, 0.12]; }
+    else { P.neck = [[80, 49], [87, 39], [91, 33]]; P.head = [93, 31, -0.05]; }
+  } else if (time < d.happy) P.wag = Math.sin(t * 14) * 0.35;
+  return P;
+}
+// the body outline, back to rump, with a tucked-up belly and deep chest
+function dogTorso(oy) {
+  const p = new Path2D();
+  p.moveTo(26, 30 + oy);
+  p.bezierCurveTo(34, 24 + oy, 50, 27 + oy, 62, 26 + oy);
+  p.bezierCurveTo(70, 25 + oy, 76, 22 + oy, 80, 23 + oy);
+  p.bezierCurveTo(88, 26 + oy, 92, 34 + oy, 89, 42 + oy);
+  p.bezierCurveTo(86, 50 + oy, 78, 52 + oy, 70, 51 + oy);
+  p.bezierCurveTo(60, 50 + oy, 54, 44 + oy, 46, 42 + oy);
+  p.bezierCurveTo(40, 41 + oy, 36, 41 + oy, 32, 40 + oy);
+  p.bezierCurveTo(26, 39 + oy, 23, 35 + oy, 26, 30 + oy);
+  p.closePath();
+  return p;
+}
+function drawDogShape(d) {
+  const P = dogPoseV(d), c = ctx, x0 = d.x, y0 = d.y - DOG_GROUND, oy = P.oy;
+  c.save();
+  c.translate(x0, y0);
+  if (d.dir < 0) { c.translate(DOG_BOX, 0); c.scale(-1, 1); }
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  const torso = dogTorso(oy);
+  const legs = [[P.fh, V_HW, 5, true], [P.ff, V_FW, -5, true], [P.nh, V_HW, 0, false], [P.nf, V_FW, 0, false]];
+  const limb = (pts, ws, dx, extra, col) => {   // a leg: tapered round-capped strokes joint to joint, and a paw
+    c.strokeStyle = col;
+    for (let i = 0; i < 3; i++) { c.lineWidth = ws[i] + extra; c.beginPath(); c.moveTo(pts[i][0] + dx, pts[i][1] + (P.lie ? 0 : oy * (i ? 0 : 1))); c.lineTo(pts[i + 1][0] + dx, pts[i + 1][1]); c.stroke(); }
+    const [px, py] = pts[3]; c.fillStyle = col; c.beginPath(); c.ellipse(px + dx + 2.5, py + 0.5, 4.5 + extra / 2, 2.6 + extra / 2, 0, 0, Math.PI * 2); c.fill();
+  };
+  // hind leg, cartoon style: one solid haunch flowing out of the rump and tapering to the hock, then a
+  // slim lower leg down to the paw; the whole leg swings from the hip
+  const hind = (ang, lift, dx, outline, col) => {
+    c.save(); c.translate(34 + dx, 36 + oy); c.rotate(ang);
+    const h = new Path2D();
+    h.moveTo(-7, -6);
+    h.bezierCurveTo(-10, 3, -8, 14, -5, 21);      // back of the thigh down to the hock
+    h.lineTo(-1, 22);
+    h.bezierCurveTo(1, 17, 5, 14, 6, 9);          // gaskin up to the stifle
+    h.bezierCurveTo(7, 4, 6, -3, 3, -8);          // front of the thigh up into the flank
+    h.closePath();
+    const ex = outline ? DOG_O * 2 : 0, ink = outline ? DC.o : col;
+    c.strokeStyle = ink; c.lineWidth = 5 + ex;
+    c.beginPath(); c.moveTo(-3.5, 20); c.lineTo(-2.5 + lift * 0.3, 34.5 - lift); c.stroke();          // hock to paw
+    c.fillStyle = ink; c.beginPath(); c.ellipse(0 + lift * 0.3, 35.2 - lift, 4.5 + ex / 2, 2.6 + ex / 2, -ang, 0, Math.PI * 2); c.fill();
+    if (outline) { c.lineWidth = ex; c.stroke(h); } else { c.fillStyle = col; c.fill(h); }
+    c.restore();
+  };
+  // tail: base at the croup, tapering, liver at the root and white at the tip
+  const ta = P.tail + P.wag, tb = [26, 30 + oy], tm = [tb[0] - 9 * Math.cos(ta), tb[1] - 9 * Math.sin(ta) - 0.5], tt = [tb[0] - 19 * Math.cos(ta * 1.25), tb[1] - 19 * Math.sin(ta * 1.25) - 2];
+  const tail = (extra, base, tip) => {
+    c.strokeStyle = base; c.lineWidth = 3.6 + extra; c.beginPath(); c.moveTo(...tb); c.lineTo(...tm); c.stroke();
+    c.lineWidth = 2.6 + extra; c.beginPath(); c.moveTo(...tm); c.lineTo((tm[0] + tt[0]) / 2, (tm[1] + tt[1]) / 2); c.stroke();
+    c.strokeStyle = tip; c.lineWidth = 1.6 + extra; c.beginPath(); c.moveTo((tm[0] + tt[0]) / 2, (tm[1] + tt[1]) / 2); c.lineTo(...tt); c.stroke();
+  };
+  const neck = (extra, col) => {
+    const [a, b, e] = P.neck; c.strokeStyle = col;
+    c.lineWidth = 15 + extra; c.beginPath(); c.moveTo(...a); c.lineTo(...b); c.stroke();
+    c.lineWidth = 12 + extra; c.beginPath(); c.moveTo(...b); c.lineTo(...e); c.stroke();
+  };
+  // head: skull, square muzzle, nose, ear, eye, blaze; drawn at the end of the neck, tilted
+  const head = (outline) => {
+    const [hx, hy, ang] = P.head;
+    c.save(); c.translate(hx, hy); c.rotate(ang);
+    const o = outline ? DOG_O : 0;
+    const shapes = () => {
+      c.beginPath(); c.ellipse(0, 0, 8 + o, 7 + o, 0, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.roundRect(3 - o, -3 - o, 15 + o * 2, 9 + o * 2, 4 + o); c.fill();
+      if (P.bark) { c.save(); c.translate(5, 4); c.rotate(0.45); c.beginPath(); c.roundRect(-o, -o, 11 + o * 2, 3.5 + o * 2, 2); c.fill(); c.restore(); }
+    };
+    if (outline) { c.fillStyle = DC.o; shapes(); c.restore(); return; }
+    c.fillStyle = DC.L; shapes();
+    if (P.bark) { c.fillStyle = DC.P; c.beginPath(); c.ellipse(11, 5.5, 4, 1.6, 0.3, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = DC.W; c.beginPath(); c.roundRect(11, -3, 7, 9, 3.5); c.fill();                 // white front of the muzzle
+    c.strokeStyle = DC.W; c.lineWidth = 3; c.beginPath(); c.moveTo(-3, -6.5); c.quadraticCurveTo(5, -5.5, 12, -2); c.stroke();   // blaze
+    c.fillStyle = DC.Lh; c.beginPath(); c.ellipse(-2, -3.5, 4.5, 2.2, -0.2, 0, Math.PI * 2); c.fill();   // light on the skull
+    c.fillStyle = DC.N; c.beginPath(); c.ellipse(17.5, 0.5, 2.6, 2.4, 0, 0, Math.PI * 2); c.fill();     // nose
+    c.strokeStyle = DC.o; c.lineWidth = 1; c.beginPath(); c.moveTo(9, 4.6); c.quadraticCurveTo(13, 6, 16, 4); c.stroke();   // mouth line
+    if (P.sleep) { c.strokeStyle = DC.E; c.lineWidth = 1.2; c.beginPath(); c.moveTo(1.5, -1.5); c.quadraticCurveTo(3.5, -0.3, 5.5, -1.5); c.stroke(); }
+    else { c.fillStyle = DC.E; c.beginPath(); c.ellipse(3.5, -2, 1.7, 1.9, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(4.1, -2.6, 0.6, 0, Math.PI * 2); c.fill(); }
+    // long hanging ear, over the side of the head
+    const ear = new Path2D(); ear.moveTo(-3, -5); ear.bezierCurveTo(-11, -2, -10, 12, -4, 15); ear.bezierCurveTo(0, 16, 2, 8, 1, -1); ear.closePath();
+    c.strokeStyle = DC.o; c.lineWidth = DOG_O * 2; c.stroke(ear); c.fillStyle = DC.Ld; c.fill(ear);
+    c.restore();
+  };
+  const all = (pass) => {   // pass 'o': outlines only; pass 'f': fills
+    const o = pass === 'o', ex = o ? DOG_O * 2 : 0;
+    if (!P.lie) hind(P.hA[1], P.hL[1], 5, o, DC.far);                                                 // far hind
+    limb(P.ff, V_FW, -5, ex, o ? DC.o : DC.far);                                                       // far fore
+    tail(ex, o ? DC.o : DC.L, o ? DC.o : DC.W);
+    if (o) { c.lineWidth = DOG_O * 2; c.strokeStyle = DC.o; c.stroke(torso); } else { c.fillStyle = DC.W; c.fill(torso); }
+    if (P.lie) {   // folded haunch and tucked hind foot
+      const h = new Path2D(); h.ellipse(34, 58, 14, 11, -0.1, 0, Math.PI * 2);
+      if (o) c.stroke(h); else { c.fillStyle = DC.W; c.fill(h); }
+      limb([[30, 64], [36, 68], [42, 70], [44, 70.5]], [6, 5, 5], 0, ex, o ? DC.o : DC.W);
+    } else hind(P.hA[0], P.hL[0], 0, o, DC.W);
+    limb(P.nf, V_FW, 0, ex, o ? DC.o : DC.W);
+    neck(ex, o ? DC.o : DC.W);
+    if (!o) { c.fillStyle = DC.L; c.beginPath(); c.ellipse(P.neck[2][0] - 3, P.neck[2][1] + 3, 4.5, 5, 0.5, 0, Math.PI * 2); c.fill(); }   // liver at the nape
+    head(o);
+  };
+  all('o'); all('f');
+  // markings and shading, kept inside the body: shoulder patch, rump patch, belly shade, ticking
+  c.save(); c.clip(torso);
+  c.fillStyle = DC.sh; c.beginPath(); c.ellipse(60, 52 + oy, 34, 9, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = DC.L; c.beginPath(); c.ellipse(64, 36 + oy, 10, 13, 0.15, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(30, 33 + oy, 8, 10, -0.2, 0, Math.PI * 2); c.fill();
+  c.fillStyle = DC.Lh; c.beginPath(); c.ellipse(62, 28 + oy, 6, 3, 0.1, 0, Math.PI * 2); c.fill();
+  c.restore();
+  // ticking over the white
+  c.fillStyle = DC.L;
+  for (let i = 0; i < 46; i++) {
+    const tx = 24 + dogHash(i, 3) * 70, ty = 24 + oy + dogHash(i, 7) * 30;
+    if (c.isPointInPath(torso, tx, ty) && dogHash(i, 11) > 0.25) { c.beginPath(); c.arc(tx, ty, 0.7, 0, Math.PI * 2); c.fill(); }
+  }
+  // a hint of where the near legs meet the body
+  if (!P.lie) {
+    c.strokeStyle = DC.sh; c.lineWidth = 1.2;
+    const [sh, el] = P.nf; c.beginPath(); c.moveTo(sh[0] - 4, sh[1] + 3 + oy); c.quadraticCurveTo(el[0] - 5, (sh[1] + el[1]) / 2 + 2, el[0] - 2, el[1] + 2); c.stroke();
+  }
+  c.restore();
+}
+// she's drawn smooth, then brought down to the game's look: rendered at half size, every pixel either
+// solid or empty and snapped to her own few colours, then blown back up to 2-px blocks (the same size
+// as the pixels in Jerry's face)
+const DOG_PX = 2, DOG_PAD_X = 4, DOG_PAD_Y = 10, DOG_CW = 128, DOG_CH = 86;
+const dogPix = document.createElement('canvas'); dogPix.width = DOG_CW / DOG_PX; dogPix.height = DOG_CH / DOG_PX;
+const dogPixCtx = dogPix.getContext('2d', { willReadFrequently: true });
+const DOG_RGB = [DC.o, DC.W, DC.sh, DC.far, DC.L, DC.Ld, DC.Lh, DC.N, DC.P, DC.E, '#ffffff'].map(h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)));
+function drawDog(d) {
+  const P = dogPoseV(d), x0 = d.x, y0 = d.y - DOG_GROUND;
+  pEllipse(x0 + (P.lie ? 62 : 54), d.y + 1, P.lie ? 50 : 40, 3, 'rgba(10,20,10,0.35)');   // shadow
+  const real = ctx; ctx = dogPixCtx;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, dogPix.width, dogPix.height);
+  ctx.setTransform(1 / DOG_PX, 0, 0, 1 / DOG_PX, DOG_PAD_X / DOG_PX, DOG_PAD_Y / DOG_PX);
+  drawDogShape(Object.assign({}, d, { x: 0, y: DOG_GROUND }));
+  ctx = real;
+  const img = dogPixCtx.getImageData(0, 0, dogPix.width, dogPix.height), px = img.data;
+  for (let i = 0; i < px.length; i += 4) {
+    if (px[i + 3] < 110) { px[i + 3] = 0; continue; }
+    const a = px[i + 3] / 255, r = px[i] / a, g = px[i + 1] / a, b = px[i + 2] / a;   // undo the edge blending
+    let best = DOG_RGB[0], bd = 1e9;
+    for (const q of DOG_RGB) { const dd = (q[0] - r) ** 2 + (q[1] - g) ** 2 + (q[2] - b) ** 2; if (dd < bd) { bd = dd; best = q; } }
+    px[i] = best[0]; px[i + 1] = best[1]; px[i + 2] = best[2]; px[i + 3] = 255;
+  }
+  dogPixCtx.putImageData(img, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(dogPix, Math.round(x0 - DOG_PAD_X), Math.round(y0 - DOG_PAD_Y), DOG_CW, DOG_CH);
+  const headX = d.dir > 0 ? x0 + P.head[0] + 6 : x0 + DOG_BOX - P.head[0] - 6;
+  if (d.state === 'bark' && P.bark) text('WOOF!', headX, y0 + P.head[1] - 18, C_WHT, 1, 'center');
+  if (P.sleep) drawZs(d.dir > 0 ? x0 + 100 : x0 + 14, y0 + 52, false);
+}
+const dogHash = (x, y) => (((x * 73856093) ^ (y * 19349663)) >>> 0) % 997 / 997;
+// where the two of them are and what they're up to (title screen only)
+const TJ = { next: 1.5, say: null, fx: 0, x: 24, y: 252, tx: null, then: null };
+const D = { x: 130, y: 258, ty: 258, dir: -1, state: 'idle', tx: null, speed: 0, until: 0, next: 2.5, happy: 0, lock: 0, then: null };
+const JERRY_RANGE = [4, 150], DOG_RANGE = [0, 148];   // keeps both clear of the menu on the right
+function jerryWalk(x, then) { TJ.tx = clamp(x, ...JERRY_RANGE); TJ.then = then || null; }
+function dogGo(x, gait, then, y) {
+  D.tx = clamp(x, ...DOG_RANGE); D.state = gait; D.speed = gait === 'run' ? 85 : 32; D.then = then || null;
+  D.ty = y ?? 244 + Math.random() * 18;
+}
+function jerrySay(line, hold = 4, force = false) {
+  const lines = wrap(line.toUpperCase(), 24), w = Math.max(...lines.map(l => textW(l))) + 12;
+  if (!force && TJ.x + 92 + w > 264 && TJ.x - 20 - w < 2) return false;   // no room either side of him right now
+  TJ.say = { lines, w, chars: 0, until: time + hold };
+  return true;
+}
+// a joke: the setup, a beat, then the punchline and a chuckle (he stays put while he tells it)
+function tellJoke() {
+  const [setup, punch] = pickLine({ jokes: JOKES }, 'jokes');
+  if (jerrySay(setup, 3.6)) TJ.punch = { line: punch, at: time + 3.8 };
+}
+function petDog() {
+  playClip(CLIPS.pet); D.state = 'idle'; D.tx = null; D.dir = -1; D.happy = time + 3.5; D.lock = time + 3.5;
+  if (!TJ.say && !TJ.punch && Math.random() < 0.6) jerrySay(pickLine({ dog: DOG_CHAT }, 'dog'));
+}
+// dog trots over to Jerry's right side, turns to face him, and gets a scratch
+function callDog() {
+  playClip(CLIPS.wave); if (!TJ.say) jerrySay("C'mere, pup!", 2);   // short, so his word for her comes when she arrives
+  dogGo(TJ.x + 52, 'run', () => { D.dir = -1; if (TJ.tx === null) petDog(); }, TJ.y + 3);
+}
+// Jerry wanders over to the dog instead
+function walkToDog() {
+  if (D.x < TJ.x + 20) { jerryWalk(Math.random() * 150); return; }
+  D.lock = time + 6; D.tx = null; D.state = 'idle'; D.dir = -1;
+  jerryWalk(D.x - 52, () => { if (Math.abs(D.x - (TJ.x + 52)) < 14) petDog(); });
+}
+// the dog goes on point toward a clay, and Jerry's pleased about it
+function dogPoint(c) {
+  if (D.state !== 'idle' || D.tx !== null || time < D.lock) return;
+  const p = proj(c.x, c.y, c.z); if (!p) return;
+  D.dir = p.x > D.x + 51 ? 1 : -1; D.state = 'point'; D.until = time + 2.5; D.next = time + 4;
+  if (!jerry.clip && TJ.tx === null && !TJ.say && !TJ.punch && !TJ.rest && Math.random() < 0.5) { playClip(CLIPS.good); jerrySay(Math.random() < 0.5 ? 'Good point!' : 'Steady... steady...'); }
+}
+function dogTick(dt) {
+  D.y += clamp(D.ty - D.y, -15 * dt, 15 * dt);
+  if (D.tx !== null) {
+    const step = D.speed * dt, dx = D.tx - D.x;
+    if (dx) D.dir = Math.sign(dx);
+    if (Math.abs(dx) <= step) { D.x = D.tx; D.tx = null; D.state = 'idle'; const f = D.then; D.then = null; if (f) f(); }
+    else D.x += Math.sign(dx) * step;
+    return;
+  }
+  if (D.state !== 'idle' && time > D.until) D.state = 'idle';
+  if (D.state !== 'idle' || time < D.next || time < D.lock) return;
+  const r = Math.random();
+  if (r < 0.45) dogGo(DOG_RANGE[0] + Math.random() * DOG_RANGE[1], Math.random() < 0.3 ? 'run' : 'walk');
+  else if (r < 0.65) { D.state = 'sniff'; D.until = time + 2 + Math.random(); }
+  else if (r < 0.8) { D.state = 'bark'; D.until = time + 1.1; SFX.woof(); }
+  else { D.dir = -D.dir; D.happy = time + 1.5; }   // turns about, tail going
+  D.next = time + 2 + Math.random() * 4;
+}
+// ---- quiet time: after 30 seconds with no clicks or keys a recliner drops in, Jerry settles in with
+//      a book and the dog lies down beside him; 30 seconds after that they're both asleep.
+//      Any click or key wakes them.
+const REST_CHAIR_X = 30, REST_AFTER = 30, SLEEP_AFTER = 60;   // seconds of quiet: chair at 30, asleep 30 after that
+TJ.lastInput = 0; TJ.rest = null;
+function startRest() {
+  TJ.rest = 'walk'; TJ.chairAt = time; TJ.landed = false; TJ.say = null; TJ.punch = null; jerry.clip = null;
+  jerryWalk(REST_CHAIR_X, () => { TJ.rest = 'sit'; TJ.sitAt = time; jerrySay('Time to put my feet up.'); });
+  D.lock = 1e9; D.happy = 0;
+  dogGo(REST_CHAIR_X + 88, 'walk', () => { D.state = 'lie'; D.dir = -1; D.until = 1e9; }, TJ.y + 4);
+}
+function wakeUp(quiet) {
+  const wasAsleep = TJ.rest === 'sleep';
+  TJ.rest = null; TJ.tx = null; TJ.then = null; TJ.punch = null; jerry.clip = null;
+  D.state = 'idle'; D.until = 0; D.lock = 0; D.sleep = false; D.tx = null; D.then = null; D.next = time + 2; D.happy = time + 2;
+  TJ.next = time + 2.5;
+  if (wasAsleep && !quiet) jerrySay("Huh? Oh! I'm up, I'm up.");
+}
+// clicks and keys count as someone being here (and wake them); just moving the mouse holds off the nap
+function noteActivity(wake) { TJ.lastInput = time; if (wake && TJ.rest) wakeUp(); }
+function titleJerry(dt) {
+  if (TJ.say) { TJ.say.chars += dt * 32; if (time > TJ.say.until) TJ.say = null; }
+  if (TJ.tx !== null) {   // walking somewhere
+    const step = 26 * dt, dx = TJ.tx - TJ.x;
+    if (Math.abs(dx) <= step) { TJ.x = TJ.tx; TJ.tx = null; const f = TJ.then; TJ.then = null; if (f) f(); }
+    else TJ.x += Math.sign(dx) * step;
+  }
+  dogTick(dt);
+  if (TJ.rest) {
+    if (!TJ.landed && time - TJ.chairAt > 0.5) { TJ.landed = true; SFX.thud(); }
+    if (TJ.rest === 'sit' && time - TJ.sitAt > 3) TJ.rest = 'read';   // out comes the book
+    if (TJ.rest === 'read' && time - TJ.lastInput > SLEEP_AFTER) { TJ.rest = 'sleep'; TJ.say = null; D.sleep = true; }
+    return;
+  }
+  if (!game.menu && !TJ.punch && !TJ.say && !jerry.clip && time - TJ.lastInput > REST_AFTER) { startRest(); return; }   // finishes his joke first
+  if (TJ.punch) {   // waiting to deliver a punchline
+    if (time > TJ.punch.at) { jerrySay(TJ.punch.line, 3.5, true); playClip(CLIPS.hello); TJ.punch = null; TJ.next = time + 4.5; }
+    return;
+  }
+  if (jerry.clip || TJ.tx !== null || time < TJ.next || game.menu) return;
+  const r = Math.random();
+  if (r < 0.22) jerryWalk(JERRY_RANGE[0] + Math.random() * JERRY_RANGE[1]);   // a stroll
+  else if (r < 0.42 && D.tx === null) callDog();
+  else if (r < 0.57) walkToDog();
+  else {   // one of his antics, maybe with a word or two
+    playClip(CLIPS[TITLE_ANTICS[Math.floor(Math.random() * TITLE_ANTICS.length)]]);
+    if (!TJ.say && Math.random() < 0.55) {
+      if (Math.random() < 0.4) tellJoke();
+      else jerrySay(Math.random() < 0.25 ? SCENE_CHAT[SCN.id] : pickLine({ hello: TITLE_CHAT }, 'hello'));
+    }
+  }
+  TJ.next = time + 3 + Math.random() * 4;
+}
 const jerry = { clip: null, at: 0, kf: -1, blinkAt: 2, idleAt: 8 };
 function playClip(c) { jerry.clip = c; jerry.at = time; jerry.kf = -1; }
 function jerryPose(baseFx) {
@@ -1363,10 +2396,11 @@ function jerryPose(baseFx) {
 // ---- Jerry's lines ----------------------------------------------
 const HELP_LINES = [
   "Alright, here's how we do it. Click Pull or hit the spacebar and I'll send the bird. Put the mouse where the clay is going, not where it is, and click to shoot. That's your lead.",
+  "Different birds need different lead. Crossers need the most, they're moving across you fast. Incomers and outgoers need very little. The rabbit hops, so stay out in front of it.",
   "Each stand you get five birds. One single, one report pair, and one true pair. On the single you've got two shells, so if you miss the first, stay on it and shoot again.",
   "Report pair means the second bird launches when you fire at the first. True pair means they both go at once. One shot each on pairs, so make them count.",
-  "We're shooting full choke out here. Tight pattern. You have to be on the bird, close doesn't break clays.",
-  "Twenty five birds, one point each. Keep your head on the stock, eyes on the target, and let the gun do the work. Pull when you're ready.",
+  "With a full choke the pattern's tight. You have to be right on the bird, close doesn't break clays.",
+  "Twenty five birds, one point each. Watch where each bird is headed, get out in front of it, and click. Pull when you're ready.",
 ];
 // Help is a menu of topics; Jerry talks through whichever one you pick
 const HELP_TOPICS = [
@@ -1379,38 +2413,81 @@ const HELP_TOPICS = [
   { name: 'LEAD MARKER', lines: [
     "Turn on the lead marker and I'll show you where to put the gun. Little blue brackets out in front of the bird. That's where your shot and the clay meet.",
     "Swing to the brackets and pull the trigger. Do it enough and your eyes will learn the lead on their own.",
-    "Flip it on or off with the Lead button or the L key, even in the middle of a round. Rounds with the marker on don't go on the board.",
+    "Switch it in Settings, or mid-round with the Lead button on the rail or the L key. Rounds with the marker on don't go on the board.",
   ] },
   { name: 'RANDOM THROWS', lines: [
-    "Normally every stand throws the same menu, so you can learn it. Turn on Random and I'll mix up which traps throw at every stand, every round.",
+    "Normally every stand throws the same menu, so you can learn it. Turn on Random Throws in Settings and I'll mix up which traps throw at every stand, every round.",
     "No two rounds alike. Keeps you honest. Random rounds still count for the Top Guns board.",
   ] },
   { name: 'EASY MODE', lines: [
-    "Easy mode makes the clays a good deal bigger and slows them down some. Good for warming up, or if your eyes are like mine.",
+    "Easy mode, in Settings, makes the clays a good deal bigger and slows them down some. Good for warming up, or if your eyes are like mine.",
     "Same birds, same flight paths, just more time to see them. Easy rounds don't go on the board, but they still count for fun.",
   ] },
   { name: 'SCENERY', lines: [
-    "Click the scenery button on the title screen to pick where we shoot. The original range, Mt. Shasta, the high desert, or the plains.",
+    "Pick where we shoot under Scenery in Settings. The original range, Mt. Shasta, the high desert, or the plains.",
     "The plains are flat as a table, big sky, you can see the birds a mile off. The high desert has red mesas and junipers. Bring water.",
     "Mt. Shasta has been my home for many years, I hope you enjoy our beautiful scenery as much as I do!",
   ] },
   { name: 'BUTTONS AND KEYS', lines: [
     "Pull or the spacebar calls the bird, and a click shoots. Card or Tab shows your scorecard. Title takes you back to the start, click it twice to be sure.",
-    "L turns the lead marker on and off, M turns the sound off, F goes full screen, and H brings you back over here to me. Escape quits the round.",
+    "L turns the lead marker on and off, M turns the sound off, F goes full screen, and H brings you back over here to me. Escape twice quits the round.",
+    "Each scenery has its own tune. Music in Settings picks Menus, which goes quiet while you shoot so you hear the trap, Always, which keeps it playing soft, Jerry Radio, or Off.",
+    "Or tune in to Jerry Radio. That's the old songs I grew up on, Red River Valley, Shenandoah, Oh Susanna and the rest, one after another.",
+    "On the radio, the arrows button or S skips ahead, and when you find one you like, Loop or the R key keeps it playing.",
+    "During a round, the Music button on the rail or the N key flips from my tunes, to Jerry Radio, to off, and back around.",
   ] },
 ];
 const HELP_HELLO = "Pull up a chair. What do you want to know about? Pick a topic, or hit Exit when you're ready to shoot.";
 const HELP_AGAIN = "Anything else? Pick another topic, or hit Exit when you're ready to shoot.";
 const STAND_LINES = {
   five: ["That's how it's done. Five straight. Don't change a thing.", "Clean stand. You were seeing them early. Keep that up.", "Now you're shooting. That's AAA work right there."],
-  good: ["Good stand. The one you dropped, you peeked at the barrel. Stay in the bird.", "Solid. Little more follow through on the crosser and that's five.", "You're close. Trust the lead, don't measure it."],
-  rough: ["Tough stand. Happens to everybody. Slow down and watch the bird leave the trap.", "You're stopping your swing. Shoot and keep moving through it.", "Don't aim a shotgun, point it. Eyes on the clay, hands follow."],
+  // a short opener for how the stand went; the tip after it comes from the birds actually missed
+  four: ["Good stand.", "Solid stand.", "Nearly clean."],
+  three: ["Not bad.", "Decent stand.", "Getting there."],
+  rough: ["Tough stand. Happens to everybody.", "That one got away from you.", "Shake that one off."],
+};
+// what Jerry calls each bird, and what he tells you for each kind of miss ({b} = the bird or birds)
+const BIRD_NAME = { A: 'the tower bird', B: 'the incomer', C: 'the rabbit', D: 'the chandelle', E: 'the crosser', F: 'the crosser' };
+// {it}/{its}/{beat}/{got}/{s} follow whether it was one bird or more
+const MISS_TIPS = {
+  behind: ["You were behind {b}. Get further out in front.", "{B} {beat} your shot. Give {it} more lead."],
+  ahead:  ["You were out in front of {b}. Ease off the lead a hair.", "Too much lead on {b}. Let {it} come to you a little."],
+  high:   ["You shot over the top of {b}. Hold a touch lower.", "High on {b}. Stay right on {its} line."],
+  low:    ["You were under {b}. Hold a touch higher.", "Low on {b}. Get up on {its} line."],
+  far:    ["{B} {got} too far out before you shot. Take {it} sooner.", "You waited too long on {b}. Shoot {it} while {it}'{s} close."],
+  noshot: ["You let {b} go without a shot. Take your shot, even if you're not sure.", "No shot at {b}. Don't let one go by without a shot."],
+};
+// the most common kind of miss in a list, and the birds it happened on
+function mainMiss(list) {
+  const order = ['noshot', 'behind', 'far', 'ahead', 'high', 'low'], n = {};
+  for (const m of list) n[m.kind] = (n[m.kind] || 0) + 1;
+  const kind = order.reduce((best, k) => (n[k] || 0) > (n[best] || 0) ? k : best, order.find(k => n[k]));
+  const names = list.filter(m => m.kind === kind).map(m => BIRD_NAME[m.trap]);
+  const uniq = [...new Set(names)].slice(0, 2).map(nm => names.filter(x => x === nm).length > 1 ? nm + 's' : nm);
+  return { kind, count: n[kind], birds: uniq.join(' and ') };
+}
+function missTip(list) {
+  const { kind, birds } = mainMiss(list);
+  const line = MISS_TIPS[kind][Math.floor(Math.random() * MISS_TIPS[kind].length)];
+  const many = birds.includes(' and ') || birds.endsWith('s');
+  const words = many ? { it: 'them', its: 'their', beat: 'beat', got: 'got', s: 're' } : { it: 'it', its: 'its', beat: 'beat', got: 'got', s: 's' };
+  return line.replace(/\{(it|its|beat|got|s)\}/g, (_, w) => words[w]).replace('{b}', birds).replace('{B}', birds[0].toUpperCase() + birds.slice(1))
+    .replace("them're", "they're");
+}
+const FINAL_TIP = {
+  behind: "Most of your misses were behind the birds. Lead them more.",
+  ahead: "You were leading them too much. Ease off a hair.",
+  high: "You missed over the top a lot. Hold lower.",
+  low: "You were under a lot of them. Hold higher.",
+  far: "You let a lot of them get too far out. Shoot sooner.",
+  noshot: "Take your shots. You can't hit what you don't shoot at.",
 };
 const FINAL_LINES = {
+  perfect: ["Twenty five straight! A perfect card. I'm proud of you.", "A clean twenty five! Frame that card, you earned it."],
   top: ["That's a card you can be proud of. You'd hold your own at any club.", "Shooting like that, you can come out with me anytime."],
-  good: ["That's good shooting. A couple more rounds and you'll be in the twenties every time.", "Respectable. You're hitting the easy ones, now go get the hard ones."],
+  good: ["That's good shooting. A couple more rounds and you'll be breaking twenty every time.", "Respectable. You're hitting the easy ones, now go get the hard ones."],
   mid: ["Not bad at all. Practice makes perfect. Let's run it again.", "You've got the hang of it. Now it's just reps."],
-  low: ["Everybody starts somewhere. I missed plenty before I hit any.", "Shake it off. Shoot another round and watch the bird, not the barrel."],
+  low: ["Everybody starts somewhere. I missed plenty before I hit any.", "Shake it off and shoot another round. You'll get them."],
 };
 // shuffled bags so he doesn't repeat himself until he's used every line
 const bags = {};
@@ -1479,49 +2556,105 @@ function drawSplash() {
   const a = clamp(t / 0.9, 0, 1);
   ctx.globalAlpha = 1 - a; R(0, 0, W, H, '#000000'); ctx.globalAlpha = 1;
 }
+// ---- title screen: Jerry on the left getting up to things, a short menu on the right ----
+const isRanked = () => game.choke === 'full' && !game.leadAid && !game.easy;
 function drawTitle() {
   ctx.globalAlpha = 0.35; R(0, 0, W, H, '#05070f'); ctx.globalAlpha = 1;
-  ctx.drawImage(GRANDPA_HEAD, 42, 6);
-  text("JERRY'S 5-STAND", W / 2 + 8, 16, '#ff7a14', 5, 'center', '#3a1500');
+  text("JERRY'S 5-STAND", W / 2, 16, '#ff7a14', 5, 'center', '#3a1500');
   text('SPORTING CLAYS', W / 2, 49, C_WHT, 2, 'center');
-  // left column: choke + start
-  panel(28, 70, 214, 150);
-  text('SELECT CHOKE', 135, 77, C_YEL, 1, 'center');
-  const ck = [['ic', 'IMP CYL'], ['mod', 'MODIFIED'], ['full', 'FULL']];
-  ck.forEach((c, i) => button(36 + i * 68, 86, 64, 15, c[1], () => { game.choke = c[0]; }, { on: game.choke === c[0] }));
-  const ch = CHOKES[game.choke];
-  text(`${ch.name}: ${game.choke === 'full' ? 'TIGHTEST PATTERN' : game.choke === 'mod' ? 'MEDIUM PATTERN' : 'WIDEST PATTERN'}`, 135, 106, '#c8d4ea', 1, 'center');
-  const ranked = game.choke === 'full' && !game.leadAid && !game.easy;
-  text(ranked ? 'COUNTS FOR THE LEADERBOARD' : 'PRACTICE ONLY - NOT RANKED', 135, 114, ranked ? C_GRN : '#ffb070', 1, 'center');
-  button(60, 126, 150, 24, 'SHOOT A ROUND', newRound, { sc: 2 });
-  const lines = ['5 STATIONS X 5 TARGETS = 25 BIRDS', 'EACH STATION: SINGLE, REPORT PAIR,', 'TRUE PAIR. TWO SHELLS EACH TIME.', 'CLICK OR SPACE - CALL FOR THE BIRD', 'MOUSE - SWING   CLICK - FIRE', 'LEAD THE CLAY - THE SHOT TAKES TIME!'];
-  lines.forEach((l, i) => text(l, 135, 158 + i * 9, i < 3 ? '#b8c2d8' : C_WHT, 1, 'center'));
-  // right column: leaderboard + trap list
-  panel(252, 70, 200, 150);
-  text('TOP GUNS - FULL CHOKE', 352, 77, C_YEL, 1, 'center');
-  const lb = lbLoad();
-  if (!lb.length) text('NO SCORES YET', 352, 92, '#8a94ad', 1, 'center');
-  lb.slice(0, 5).forEach((e, i) => {
-    const y = 88 + i * 9;
-    text(`${i + 1}.`, 270, y, '#b8c2d8'); text(e.n, 284, y, C_WHT); text(`${e.s}/25`, 360, y, C_WHT, 1, 'right'); text(e.d.slice(5), 436, y, '#8a94ad', 1, 'right');
-  });
-  text('THE TRAPS', 352, 140, C_YEL, 1, 'center');
-  Object.keys(TRAPS).forEach((k, i) => text(`${k}  ${TRAPS[k].name}`, 262, 150 + i * 9, '#c8d4ea'));
-  button(W / 2 - 150, 225, 100, 14, 'LEAD MARKER: ' + (game.leadAid ? 'ON' : 'OFF'), () => { game.leadAid = !game.leadAid; }, { on: game.leadAid });
-  button(W / 2 - 46, 225, 82, 14, 'RANDOM: ' + (game.random ? 'ON' : 'OFF'), () => { game.random = !game.random; }, { on: game.random });
-  button(W / 2 + 40, 225, 64, 14, 'EASY: ' + (game.easy ? 'ON' : 'OFF'), () => { game.easy = !game.easy; setEasy(game.easy); }, { on: game.easy });
-  button(W / 2 + 108, 225, 44, 14, 'HELP', openHelp);
-  // scene picker: click to step through the backdrops (remembered for next time)
-  const sceneBtn = x => button(x, 243, 112, 13, '< ' + SCN.name + ' >', () => setScene(SCENES.indexOf(SCN) + 1));
-  if (canFullscreen) {
-    button(W / 2 - 130, 243, 70, 13, 'SOUND: ' + (muted ? 'OFF' : 'ON'), () => { muted = !muted; });
-    button(W / 2 - 56, 243, 70, 13, isFullscreen() ? 'EXIT FULL' : 'FULL SCREEN', toggleFullscreen);
-    sceneBtn(W / 2 + 18);
-  } else {
-    button(W / 2 - 92, 243, 70, 13, 'SOUND: ' + (muted ? 'OFF' : 'ON'), () => { muted = !muted; });
-    sceneBtn(W / 2 - 18);
+  // Jerry and the dog, nearer one drawn last
+  const seatBy = TJ.y - 87;
+  const drawTJ = () => {
+    const sitting = TJ.rest && TJ.rest !== 'walk';
+    if (TJ.rest === 'walk') {   // the recliner drops in and waits for him
+      const t = clamp((time - TJ.chairAt) / 0.5, 0, 1), drop = -(1 - t * t) * 220;
+      pEllipse(REST_CHAIR_X + 36, TJ.y + 1, 60 * t, 3, 'rgba(10,20,10,0.35)');
+      drawRecliner(REST_CHAIR_X, seatBy + drop, false); drawRecliner(REST_CHAIR_X, seatBy + drop, true);
+      if (time - TJ.chairAt < 0.9 && t >= 1) for (let i = 0; i < 6; i++) { const a = (time - TJ.chairAt - 0.5) * 60; R(REST_CHAIR_X - 20 + i * 22 + (i < 3 ? -a : a) * 0.3, TJ.y - 4 - a * 0.2, 3, 3, '#b8a888'); }   // a puff of dust
+    }
+    pEllipse((sitting ? REST_CHAIR_X : TJ.x) + 36, TJ.y + 1, sitting ? 62 : 34, 3, 'rgba(10,20,10,0.35)');
+    const k = jerryPose(TJ.fx);
+    if (sitting) {
+      k.chair = 'recliner';
+      if (TJ.rest === 'read') { k.r = k.l = 'read'; k.book = 'hold'; k.hy = (k.hy || 0) + 4; }
+      else if (TJ.rest === 'sleep') { k.r = k.l = null; k.book = 'lap'; k.blink = true; k.hy = 6 + Math.floor(time / 1.6) % 2 * 2; }
+      drawJerry(REST_CHAIR_X, seatBy, true, k);
+      if (TJ.rest === 'sleep') drawZs(REST_CHAIR_X + 84, seatBy - 70, true);
+      return;
+    }
+    if (TJ.tx !== null) { k.step = [1, 0, 2, 0][Math.floor(time * 5) % 4]; k.r = k.l = null; }   // walking
+    drawJerry(TJ.x, TJ.y - 96, false, k);
+  };
+  if (D.y < TJ.y) { drawDog(D); drawTJ(); } else { drawTJ(); drawDog(D); }
+  if (TJ.say) {   // beside his head, on whichever side has room
+    const cy = TJ.y - 127, right = TJ.x + 92 + TJ.say.w <= 264;
+    drawSideBubble(TJ.say.lines, TJ.say.chars, right ? TJ.x + 92 : Math.max(2, TJ.x - 20 - TJ.say.w), cy, !right);
   }
-  text('LEAD MARKER SHOWS WHERE TO AIM - PRACTICE ONLY', W / 2, 260, '#8a94ad', 1, 'center');
+  const menu = !!game.menu;
+  // the menu
+  panel(268, 80, 190, 160);
+  if (!menu) {
+    button(276, 88, 174, 28, 'SHOOT A ROUND', newRound, { sc: 2 });
+    button(276, 124, 174, 18, 'SETTINGS', () => { game.menu = 'settings'; });
+    button(276, 146, 174, 18, 'TOP GUNS', () => { game.menu = 'scores'; });
+    button(276, 168, 174, 18, 'HELP', openHelp);
+  }
+  // what's set right now, at a glance
+  const extras = [game.random && 'RANDOM', game.easy && 'EASY', game.leadAid && 'LEAD MARKER'].filter(Boolean);
+  text(`${CHOKES[game.choke].short} CHOKE${extras.length ? ' - ' + extras.join(' - ') : ''}`, 363, 194, '#c8d4ea', 1, 'center');
+  text(`${SCN.name}   MUSIC: ${MUS.mode === 'radio' ? 'JERRY RADIO' : MUSIC_LABEL[MUS.mode]}`, 363, 204, '#8a94ad', 1, 'center');
+  text(isRanked() ? 'COUNTS FOR TOP GUNS' : 'PRACTICE - NOT RANKED', 363, 220, isRanked() ? C_GRN : '#ffb070', 1, 'center');
+  text('ENTER: SHOOT   H: HELP   F: FULL SCREEN', 363, 258, '#8a94ad', 1, 'center');
+  if (game.menu === 'settings') drawSettings();
+  else if (game.menu === 'scores') drawTopGuns();
+}
+function drawSettings() {
+  ctx.globalAlpha = 0.5; R(0, 0, W, H, '#05070f'); ctx.globalAlpha = 1;
+  panel(66, 26, 348, 222, 0.96);
+  text('SETTINGS', W / 2, 33, C_YEL, 2, 'center');
+  const row = (i, label) => { const y = 56 + i * 22; text(label, 78, y + 4, C_WHT); return y; };
+  const note = (y, s) => text(s, 262, y + 4, '#8a94ad');
+  const onOff = (y, v, fn) => button(190, y, 64, 14, v ? 'ON' : 'OFF', fn, { on: v });
+  let y = row(0, 'CHOKE');
+  [['ic', 'IMP CYL'], ['mod', 'MODIFIED'], ['full', 'FULL']].forEach((c, i) => button(190 + i * 70, y, 66, 14, c[1], () => { game.choke = c[0]; }, { on: game.choke === c[0] }));
+  y = row(1, 'LEAD MARKER'); onOff(y, game.leadAid, () => { game.leadAid = !game.leadAid; }); note(y, 'SHOWS WHERE TO AIM');
+  y = row(2, 'RANDOM THROWS'); onOff(y, game.random, () => { game.random = !game.random; }); note(y, 'NEW TRAP ORDER EACH ROUND');
+  y = row(3, 'EASY MODE'); onOff(y, game.easy, () => { game.easy = !game.easy; setEasy(game.easy); }); note(y, 'BIGGER, SLOWER CLAYS');
+  y = row(4, 'SCENERY'); button(190, y, 136, 14, '< ' + SCN.name + ' >', () => setScene(SCENES.indexOf(SCN) + 1));
+  y = row(5, 'MUSIC'); button(190, y, 64, 14, MUSIC_LABEL[MUS.mode], toggleMusic, { on: MUS.mode !== 'off' });
+  if (MUS.mode === 'radio') { button(258, y, 22, 14, '>>', nextSong); button(284, y, 34, 14, 'LOOP', toggleLoop, { on: MUS.repeat }); text('JERRY RADIO', 324, y + 4, '#8a94ad'); }
+  else note(y, { menus: 'QUIET WHILE YOU SHOOT', always: 'SOFT WHILE YOU SHOOT', off: 'NO MUSIC' }[MUS.mode]);
+  y = row(6, 'SOUND'); onOff(y, !muted, () => { muted = !muted; });
+  if (canFullscreen) { text('FULL SCREEN', 262, y + 4, C_WHT); button(338, y, 64, 14, isFullscreen() ? 'ON' : 'OFF', toggleFullscreen, { on: isFullscreen() }); }
+  text(isRanked() ? 'FULL CHOKE, NO AIDS: COUNTS FOR TOP GUNS' : 'PRACTICE SETUP - SCORES WILL NOT BE RANKED', W / 2, 214, isRanked() ? C_GRN : '#ffb070', 1, 'center');
+  button(W / 2 - 40, 226, 80, 16, 'DONE', () => { game.menu = null; });
+}
+function drawTopGuns() {
+  ctx.globalAlpha = 0.5; R(0, 0, W, H, '#05070f'); ctx.globalAlpha = 1;
+  panel(110, 30, 260, 212, 0.96);
+  text('TOP GUNS', W / 2, 37, C_YEL, 2, 'center');
+  text('FULL CHOKE - NO LEAD MARKER - NO EASY MODE', W / 2, 54, '#8a94ad', 1, 'center');
+  const lb = lbLoad();
+  if (!lb.length) text('NO SCORES YET - BE THE FIRST!', W / 2, 110, '#c8d4ea', 1, 'center');
+  lb.forEach((e, i) => {
+    const y = 70 + i * 13, col = i === 0 ? C_YEL : C_WHT;
+    text(`${i + 1}.`, 150, y, '#b8c2d8'); text(e.n, 172, y, col); text(`${e.s}/25`, 290, y, col, 1, 'right'); text(e.d, 334, y, '#8a94ad', 1, 'right');
+  });
+  button(W / 2 - 40, 220, 80, 16, 'CLOSE', () => { game.menu = null; });
+}
+// speech bubble beside Jerry's head, tail pointing back at him
+function drawSideBubble(lines, shown, x, cy, tailRight) {
+  const O = '#1a1208', Fi = '#fff8e6', w = Math.max(...lines.map(l => textW(l))) + 12, h = lines.length * 8 + 7, y = Math.round(cy - h / 2);
+  x = Math.round(x);
+  ctx.globalAlpha = 0.35; R(x + 2, y + 2, w, h, '#000000'); ctx.globalAlpha = 1;
+  R(x + 2, y, w - 4, h, O); R(x, y + 2, w, h - 4, O); R(x + 1, y + 1, w - 2, h - 2, O);
+  R(x + 2, y + 1, w - 4, h - 2, Fi); R(x + 1, y + 2, w - 2, h - 4, Fi);
+  // the tail points back at Jerry, from whichever side he's on
+  const tx = i => tailRight ? x + w + 4 - i : x - 5 + i;
+  for (let i = 0; i < 5; i++) R(tx(i), cy - 1 - (4 - i) / 2, 1, 3 + (4 - i), O);
+  for (let i = 1; i < 5; i++) R(tailRight ? tx(i) : tx(i) + 1, cy - (4 - i) / 2, 1, 1 + (4 - i), Fi);
+  let left = shown;
+  lines.forEach((l, i) => { text(l.slice(0, Math.max(0, Math.floor(left))), x + 6, y + 5 + i * 8, '#2a2010', 1, 'left', null); left -= l.length; });
 }
 function drawSummary() {
   ctx.globalAlpha = 0.55; R(0, 0, W, H, '#05070f'); ctx.globalAlpha = 1;
@@ -1536,11 +2669,12 @@ function drawSummary() {
   const yb = drawScorecard(36, false, cx, 50);
   const f = game.final, pct = Math.round(f.s / 25 * 100);
   text(`${f.s}/25  -  ${pct}%`, cx, yb + 6, C_WHT, 2, 'center');
-  const rating = f.s === 25 ? 'STRAIGHT! A PERFECT 25' : f.s >= 22 ? 'CHAMPION SHOOTING' : f.s >= 18 ? 'SHARP SHOOTING' : f.s >= 13 ? 'SOLID ROUND' : f.s >= 8 ? 'KEEP PRACTICING' : 'WORK ON THAT LEAD';
+  // same bands as Jerry's closing line: 25 / 23+ / 18+ / 12+ / under 12
+  const rating = f.s === 25 ? 'STRAIGHT! A PERFECT 25' : f.s >= 23 ? 'CHAMPION SHOOTING' : f.s >= 18 ? 'SHARP SHOOTING' : f.s >= 12 ? 'SOLID ROUND' : f.s >= 6 ? 'KEEP PRACTICING' : 'WORK ON THAT LEAD';
   text(`${rating}   SINGLES ${f.singles}/5   REPORT ${f.report}/10   TRUE ${f.tru}/10`, cx, yb + 20, '#c8d4ea', 1, 'center');
   const ly = yb + 30;
   if (game.lbEntry) {
-    const cur = Math.floor(time * 3) % 2 ? '_' : ' ';
+    const cur = game.lbEntry.name.length >= 3 ? '' : Math.floor(time * 3) % 2 ? '_' : ' ';
     text(`NEW HIGH SCORE! INITIALS: ${(game.lbEntry.name + cur).padEnd(3, ' ')}  (TYPE, THEN ENTER)`, cx - 34, ly, C_GRN, 1, 'center');
     button(cx + 112, ly - 4, 52, 13, 'TAP HERE', promptInitials);
   } else if (game.lbId) {
@@ -1549,7 +2683,7 @@ function drawSummary() {
   } else if (game.assisted) text('LEAD MARKER USED - SCORE NOT RANKED', cx, ly, '#5ff2ff', 1, 'center');
   else if (game.easyRound) text('EASY MODE - SCORE NOT RANKED', cx, ly, '#5ff2ff', 1, 'center');
   else if (game.choke !== 'full') text('PRACTICE CHOKE - SCORE NOT RANKED (USE FULL TO COMPETE)', cx, ly, '#ffb070', 1, 'center');
-  else text('NOT IN THE TOP 10 THIS TIME', cx, ly, '#8a94ad', 1, 'center');
+  else text(f.s === 0 ? 'NO BIRDS, NO BOARD - GO AGAIN!' : 'NOT IN THE TOP 10 THIS TIME', cx, ly, '#8a94ad', 1, 'center');
   button(cx - 150, ly + 10, 196, 17, 'SHOOT ANOTHER ROUND', () => { saveInitials(); newRound(); }, { sc: 1 });
   button(cx + 54, ly + 10, 96, 17, 'TITLE', () => { saveInitials(); toTitle(); });
 }
@@ -1596,6 +2730,7 @@ function drawTalk() {
 }
 
 // ---- main render -------------------------------------------------
+let portraitBlock = false;
 function render() {
   ui = [];
   ctx.save();
@@ -1611,19 +2746,30 @@ function render() {
   ctx.restore();
   const playing = ['ready', 'flight', 'reload', 'walk'].includes(game.state);
   if (playing || game.state === 'talk') drawJerryOnRange();
-  if (game.state === 'talk') { drawRail(); drawTalk(); drawCursor(); }
+  if (game.state === 'talk') { drawRail(); drawTalk(); drawMsgs(); drawCursor(); }
   else if (playing) {
     drawRail();
+    if (!game.showCard) drawGun();         // the gun sits behind the rail buttons and hints
     drawHUD();
     drawMsgs();
-    if (game.showCard) { drawLiveCard(); drawCursor(); }
-    else drawGun();
+    if (game.showCard) { ui = []; drawLiveCard(); drawCursor(); }   // nothing under the card can be pressed
+    else drawCrosshair();
   } else if (game.state === 'title') { drawTitle(); drawCursor(); }
   else if (game.state === 'splash') drawSplash();
   else if (game.state === 'summary') { drawSummary(); drawCursor(); }
+  // Jerry Radio: show what's playing for a few seconds when a new song starts
+  if (MUS.np && MUS.mode === 'radio' && game.state !== 'splash' && game.state !== 'summary' && !game.menu && time - MUS.np.at < 5) {
+    const s = `JERRY RADIO - ${MUS.np.title}${MUS.repeat ? ' (LOOP)' : ''}`, w = textW(s) + 10, y = game.state === 'talk' ? 238 : game.state === 'title' ? 67 : 62;
+    ctx.globalAlpha = clamp(5 - (time - MUS.np.at), 0, 1);
+    R(W / 2 - w / 2, y - 3, w, 11, '#0b0e1a'); R(W / 2 - w / 2, y - 3, w, 1, '#e0a020');
+    text(s, W / 2, y, C_YEL, 1, 'center', null);
+    ctx.globalAlpha = 1;
+  }
   // phones held upright: the field is too small to shoot, so ask for landscape.
   // Judged by the physical screen size, so touchscreen laptops and tall desktop windows are left alone.
-  if (innerHeight > innerWidth && navigator.maxTouchPoints > 0 && Math.min(screen.width, screen.height) < 600) {
+  portraitBlock = innerHeight > innerWidth && navigator.maxTouchPoints > 0 && Math.min(screen.width, screen.height) < 600;
+  if (portraitBlock) {
+    ui = [];   // nothing hidden under the notice can be pressed
     R(0, 0, W, H, '#0b0e1a');
     text('TURN YOUR PHONE SIDEWAYS', W / 2, H / 2 - 10, C_YEL, 3, 'center');
     text('JERRY\'S 5-STAND PLAYS IN LANDSCAPE', W / 2, H / 2 + 16, C_GRY, 1, 'center');
@@ -1638,11 +2784,11 @@ function setMouse(e) {
 }
 // pointer events cover mouse, touchpad taps, touchscreens and pens; listen on the whole page
 // so a click in the letterbox margin still counts
-addEventListener('pointermove', setMouse);
+addEventListener('pointermove', e => { setMouse(e); noteActivity(false); });
 addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('pointerdown', e => {
-  e.preventDefault(); audio(); setMouse(e);
-  if (e.button !== 0) return;
+  e.preventDefault(); audio(); setMouse(e); noteActivity(true);
+  if (e.button !== 0 || portraitBlock) return;
   if (game.state === 'splash') { leaveSplash(); return; }
   for (const b of ui) {
     if (mouse.x >= b.x && mouse.x < b.x + b.w && mouse.y >= b.y && mouse.y < b.y + b.h) {
@@ -1657,25 +2803,35 @@ addEventListener('pointerdown', e => {
   else if (game.state === 'flight') fire();    // later clicks fire
 });
 addEventListener('keydown', e => {
-  audio();
+  audio(); noteActivity(true);
   const k = e.key;
   if (game.state === 'splash') { e.preventDefault(); leaveSplash(); return; }
   if (game.state === 'talk' && (k === ' ' || e.code === 'Space' || k === 'Enter')) { e.preventDefault(); if (!e.repeat) talkClick(); return; }
-  if (k === ' ' || e.code === 'Space') { e.preventDefault(); if (!e.repeat && game.state === 'ready') pull(); return; }
+  if (k === ' ' || e.code === 'Space') { e.preventDefault(); if (!e.repeat && game.state === 'ready' && !game.showCard) pull(); return; }
   if (k === 'Tab') { e.preventDefault(); if (!['title', 'summary', 'talk'].includes(game.state)) game.showCard = true; return; }
   if (game.state === 'summary' && game.lbEntry) {
     if (/^[a-z0-9]$/i.test(k) && game.lbEntry.name.length < 3) { game.lbEntry.name += k.toUpperCase(); SFX.ui(); return; }
     if (k === 'Backspace') { e.preventDefault(); game.lbEntry.name = game.lbEntry.name.slice(0, -1); return; }
-    if (k === 'Enter') { saveInitials(); SFX.pair(); return; }
+    if (k === 'Enter') { if (game.lbEntry.name && !e.repeat) { saveInitials(); SFX.pair(); } return; }
+    if (k === 'Escape') { saveInitials(); toTitle(); return; }
     return;
   }
-  if (k === 'Enter') { if (game.state === 'title' || game.state === 'summary') newRound(); return; }
+  if (game.state === 'title' && game.menu && (k === 'Escape' || k === 'Enter')) { game.menu = null; return; }   // close Settings / Top Guns
+  if (k === 'Enter') { if (!e.repeat && (game.state === 'title' || game.state === 'summary')) newRound(); return; }
   if (k === 'm' || k === 'M') { muted = !muted; return; }
+  if (k === 'n' || k === 'N') { musicOnOff(); return; }
+  if (k === 's' || k === 'S') { nextSong(); return; }
+  if (k === 'r' || k === 'R') { toggleLoop(); return; }
   if (k === 'f' || k === 'F') { toggleFullscreen(); return; }
   if (k === 'l' || k === 'L') { toggleLeadAid(); return; }
   if (k === 'h' || k === 'H') { openHelp(); return; }
   if (k === 'Escape' && game.state === 'talk' && game.talk.kind === 'help') { endTalk(); return; }   // Esc closes help, not the round
-  if (k === 'Escape' && game.state !== 'title') { toTitle(); return; }
+  if (k === 'Escape' && game.state === 'summary') { toTitle(); return; }
+  if (k === 'Escape' && game.state !== 'title') {   // mid-round: press twice, like the Title button
+    if (time < game.quitArmedUntil) toTitle();
+    else { game.quitArmedUntil = time + 2.5; say('PRESS ESC AGAIN TO QUIT', C_YEL, 2.5, 1, 100); SFX.ui(); }
+    return;
+  }
 });
 // hide the browser's tabs and toolbars. iPhones don't allow this from a web page; there the
 // installed home-screen app opens full screen instead, so the button only shows where it works.
@@ -1699,7 +2855,7 @@ function leaveSplash() {
 }
 function toggleLeadAid() {
   game.leadAid = !game.leadAid;
-  if (game.leadAid && game.state !== 'title') game.assisted = true;
+  if (game.leadAid && game.state === 'flight') game.assisted = true;   // in use on a bird in the air (pull() covers the rest)
 }
 function setEasy(on) { CLAY_R = on ? 0.34 * EASY_SIZE : 0.34; }
 // phones have no keyboard on the summary screen, so ask for initials with the system prompt
@@ -1723,7 +2879,8 @@ addEventListener('resize', fit); fit();
 let last = performance.now(), acc = 0;
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now; acc += dt;
-  while (acc >= STEP) { update(STEP); acc -= STEP; }
+  while (acc >= STEP) { if (!portraitBlock) update(STEP); acc -= STEP; }   // paused while the phone is held upright
+  musicTick();
   render();
   requestAnimationFrame(frame);
 }
@@ -1736,7 +2893,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
 }
 
 // handy for tinkering in the console
-window.__g = { game, TRAPS, launchClay, stepClay, CLAY_R, STEP, mouse, fire, pull, proj, leadPoint, jerry, CLIPS, playClip, setScene, openHelp, endRound, nextAfterReload, get clays() { return clays; } };
+window.__g = { game, TRAPS, launchClay, stepClay, CLAY_R, STEP, mouse, fire, pull, proj, leadPoint, jerry, CLIPS, playClip, setScene, D, TJ, callDog, walkToDog, dogPoint, MUS, TUNES, ARRANGE, compileTune, playJingle, RADIO, parseABC, radioSong, musicOnOff, openHelp, endRound, nextAfterReload, get clays() { return clays; } };
 </script>
 </body>
 </html>
